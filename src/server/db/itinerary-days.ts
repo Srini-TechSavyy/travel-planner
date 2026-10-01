@@ -84,6 +84,7 @@ export async function insertItineraryDayFull(
   db: D1Database,
   tripId: string,
   day: {
+    id?: string;
     day_number: number;
     date: string;
     from_location?: string | null;
@@ -102,7 +103,7 @@ export async function insertItineraryDayFull(
     foods?: { name: string; sort_order?: number }[];
   },
 ): Promise<ItineraryDay> {
-  const id = crypto.randomUUID();
+  const id = day.id ?? crypto.randomUUID();
   const ts = nowIso();
   await db
     .prepare(

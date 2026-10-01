@@ -105,32 +105,47 @@ export async function replaceDayLists(
   }
 }
 
-export async function insertDayLists(
+type ListItemInput = { id?: string; name: string; sort_order?: number };
+
+export function buildDayListStatements(
   db: D1Database,
   tripDayId: string,
   lists: {
-    sightseeing?: { name: string; sort_order?: number }[];
-    restaurants?: { name: string; sort_order?: number }[];
-    foods?: { name: string; sort_order?: number }[];
+    sightseeing?: ListItemInput[];
+    restaurants?: ListItemInput[];
+    foods?: ListItemInput[];
   },
-): Promise<void> {
+): D1PreparedStatement[] {
+  const statements: D1PreparedStatement[] = [];
   const kinds: ListKind[] = ["sightseeing", "restaurants", "foods"];
   for (const kind of kinds) {
     const items = lists[kind] ?? [];
     const table = TABLE[kind];
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      await db
-        .prepare(
-          `INSERT INTO ${table} (id, trip_day_id, name, sort_order) VALUES (?, ?, ?, ?)`,
-        )
-        .bind(
-          crypto.randomUUID(),
-          tripDayId,
-          item.name,
-          item.sort_order ?? i,
-        )
-        .run();
+      const rowId = item.id ?? crypto.randomUUID();
+      statements.push(
+        db
+          .prepare(
+            `INSERT OR IGNORE INTO ${table} (id, trip_day_id, name, sort_order) VALUES (?, ?, ?, ?)`,
+          )
+          .bind(rowId, tripDayId, item.name, item.sort_order ?? i),
+      );
     }
   }
+  return statements;
+}
+
+export async function insertDayLists(
+  db: D1Database,
+  tripDayId: string,
+  lists: {
+    sightseeing?: ListItemInput[];
+    restaurants?: ListItemInput[];
+    foods?: ListItemInput[];
+  },
+): Promise<void> {
+  const statements = buildDayListStatements(db, tripDayId, lists);
+  if (statements.length === 0) return;
+  await db.batch(statements);
 }

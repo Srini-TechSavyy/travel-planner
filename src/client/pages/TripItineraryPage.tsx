@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { apiFetch } from "../api/client";
 import { ItineraryDayForm } from "../components/ItineraryDayForm";
@@ -7,6 +7,7 @@ import { BudgetSummary } from "../components/BudgetSummary";
 import { ErrorMessage } from "../components/ErrorMessage";
 import { LoadingState } from "../components/LoadingState";
 import { Toast } from "../components/Toast";
+import { TripCoverImage } from "../components/TripCoverImage";
 import { useAuth } from "../hooks/useAuth";
 import { useTripBundle } from "../hooks/useTripBundle";
 import {
@@ -27,6 +28,8 @@ import {
 } from "../lib/pending-import";
 import type { ItineraryDay } from "../../shared/types";
 
+const draftImportLocks = new Set<string>();
+
 export function TripItineraryPage() {
   const { tripId } = useParams<{ tripId: string }>();
   const navigate = useNavigate();
@@ -36,8 +39,10 @@ export function TripItineraryPage() {
   const [editingDay, setEditingDay] = useState<ItineraryDay | null>(null);
   const [adding, setAdding] = useState(false);
   const [savingTrip, setSavingTrip] = useState(false);
+  const [tripSaveDone, setTripSaveDone] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
+  const saveInFlightRef = useRef(false);
 
   useEffect(() => {
     if (searchParams.get("saved") === "1") {
@@ -48,35 +53,53 @@ export function TripItineraryPage() {
     }
   }, [searchParams, setSearchParams]);
 
+  const importDraftTrip = useCallback(
+    async (draftTripId: string) => {
+      if (saveInFlightRef.current || draftImportLocks.has(draftTripId)) return;
+      saveInFlightRef.current = true;
+      draftImportLocks.add(draftTripId);
+      setSavingTrip(true);
+      setPageError(null);
+
+      const draft = getDraftTrip(draftTripId);
+      if (!draft) {
+        saveInFlightRef.current = false;
+        draftImportLocks.delete(draftTripId);
+        setSavingTrip(false);
+        return;
+      }
+
+      try {
+        const data = await apiFetch<{ trip: { id: string } }>(
+          "/api/trips/import",
+          {
+            method: "POST",
+            body: JSON.stringify(draftToImportPayload(draft)),
+          },
+        );
+        deleteDraftTrip(draftTripId);
+        setTripSaveDone(true);
+        navigate(`/trips/${data.trip.id}?saved=1`, { replace: true });
+      } catch {
+        saveInFlightRef.current = false;
+        draftImportLocks.delete(draftTripId);
+        setSavingTrip(false);
+        setPageError("Unable to save trip. Please try again.");
+      }
+    },
+    [navigate],
+  );
+
   useEffect(() => {
     if (authLoading || !tripId || !isDraftTripId(tripId)) return;
     const pendingId = consumePendingImport();
     if (!pendingId || pendingId !== tripId) return;
     if (!user) return;
-
-    void (async () => {
-      const draft = getDraftTrip(tripId);
-      if (!draft) return;
-      setSavingTrip(true);
-      try {
-        const data = await apiFetch<{
-          trip: { id: string };
-        }>("/api/trips/import", {
-          method: "POST",
-          body: JSON.stringify(draftToImportPayload(draft)),
-        });
-        deleteDraftTrip(tripId);
-        navigate(`/trips/${data.trip.id}?saved=1`, { replace: true });
-      } catch {
-        setPageError("Unable to save trip. Please try again.");
-      } finally {
-        setSavingTrip(false);
-      }
-    })();
-  }, [authLoading, user, tripId, navigate]);
+    void importDraftTrip(tripId);
+  }, [authLoading, user, tripId, importDraftTrip]);
 
   async function handleSaveTrip() {
-    if (!tripId) return;
+    if (!tripId || saveInFlightRef.current || tripSaveDone) return;
     setPageError(null);
 
     if (isDraftTripId(tripId)) {
@@ -86,29 +109,20 @@ export function TripItineraryPage() {
         window.location.href = `/auth/google?return_to=${encodeURIComponent(returnPath)}`;
         return;
       }
-      const draft = getDraftTrip(tripId);
-      if (!draft) return;
-      setSavingTrip(true);
-      try {
-        const data = await apiFetch<{ trip: { id: string } }>(
-          "/api/trips/import",
-          {
-            method: "POST",
-            body: JSON.stringify(draftToImportPayload(draft)),
-          },
-        );
-        deleteDraftTrip(tripId);
-        navigate(`/trips/${data.trip.id}?saved=1`, { replace: true });
-      } catch {
-        setPageError("Unable to save trip. Please try again.");
-      } finally {
-        setSavingTrip(false);
-      }
+      await importDraftTrip(tripId);
       return;
     }
 
-    setToast("Trip saved successfully");
-    await refresh();
+    if (saveInFlightRef.current) return;
+    saveInFlightRef.current = true;
+    setSavingTrip(true);
+    try {
+      setToast("Trip saved successfully");
+      setTripSaveDone(true);
+      await refresh();
+    } finally {
+      setSavingTrip(false);
+    }
   }
 
   async function handleSaveDay(values: Parameters<typeof bundle.saveDay>[1]) {
@@ -128,7 +142,7 @@ export function TripItineraryPage() {
     }
   }
 
-  if (bundle.loading || savingTrip) return <LoadingState />;
+  if (bundle.loading) return <LoadingState />;
   if (!bundle.trip) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-8">
@@ -143,6 +157,12 @@ export function TripItineraryPage() {
   const routeLabel = formatRoute(routeStops);
   const dayCount = tripDayCount(trip.start_date, trip.end_date);
 
+  const saveButtonLabel = tripSaveDone
+    ? "Saved"
+    : savingTrip
+      ? "Saving..."
+      : "Save Trip";
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <Link
@@ -152,7 +172,11 @@ export function TripItineraryPage() {
         ← Back to My Trips
       </Link>
 
-      <header className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="mt-4 overflow-hidden rounded-2xl">
+        <TripCoverImage trip={trip} days={days} className="h-48 sm:h-56" />
+      </div>
+
+      <header className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">{trip.name}</h1>
           <p className="mt-2 text-sm text-slate-600">
@@ -174,10 +198,10 @@ export function TripItineraryPage() {
           <button
             type="button"
             onClick={() => void handleSaveTrip()}
-            disabled={savingTrip}
+            disabled={savingTrip || tripSaveDone}
             className="btn-primary"
           >
-            Save Trip
+            {saveButtonLabel}
           </button>
         </div>
       </header>

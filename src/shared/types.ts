@@ -55,4 +55,5 @@ export type ItineraryDay = {
 export type DraftTripBundle = {
   trip: Trip;
   days: ItineraryDay[];
+  server_trip_id?: string;
 };

@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, useRef, type FormEvent, type ReactNode } from "react";
 
 export type TripFormValues = {
   name: string;
@@ -32,20 +32,24 @@ export function TripForm({
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const submittingRef = useRef(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (submittingRef.current) return;
     setError(null);
     if (values.end_date < values.start_date) {
       setError("End date must be on or after start date.");
       return;
     }
+    submittingRef.current = true;
     setSaving(true);
     try {
       await onSubmit(values);
     } catch {
       setError("Unable to save your trip. Please try again.");
     } finally {
+      submittingRef.current = false;
       setSaving(false);
     }
   }

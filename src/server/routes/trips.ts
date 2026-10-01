@@ -46,7 +46,10 @@ tripRoutes.post("/import", async (c) => {
   }
   try {
     const result = await importTripForUser(c.env.DB, user.id, parsed.data);
-    return c.json(result, 201);
+    return c.json(
+      { trip: result.trip, days: result.days },
+      result.created ? 201 : 200,
+    );
   } catch {
     return c.json({ error: "Unable to import trip" }, 500);
   }
@@ -65,13 +68,14 @@ tripRoutes.post("/", async (c) => {
     return c.json({ error: "Invalid trip data", details: parsed.error.flatten() }, 400);
   }
   try {
-    const trip = await createTrip(c.env.DB, {
+    const { trip, created } = await createTrip(c.env.DB, {
+      id: parsed.data.id,
       userId: user.id,
       ...parsed.data,
       starting_location: parsed.data.starting_location ?? null,
       destination: parsed.data.destination ?? null,
     });
-    return c.json({ trip }, 201);
+    return c.json({ trip }, created ? 201 : 200);
   } catch {
     return c.json({ error: "Unable to create trip" }, 500);
   }

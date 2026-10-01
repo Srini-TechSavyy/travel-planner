@@ -9,6 +9,7 @@ import {
   tripDayCount,
 } from "../lib/format";
 import { getDraftTrip, isDraftTripId } from "../lib/draft-trips";
+import { TripCoverImage } from "./TripCoverImage";
 
 type Props = {
   trip: Trip | TripListItem;
@@ -34,7 +35,10 @@ export function TripCard({ trip, isDraft, onDelete, deleting }: Props) {
 
   return (
     <article className="card flex flex-col overflow-hidden">
-      <div className="h-28 bg-gradient-to-br from-teal-600 to-teal-800" />
+      <TripCoverImage
+        trip={trip}
+        days={draftBundle?.days}
+      />
       <div className="flex flex-1 flex-col p-5">
         <div className="flex items-start justify-between gap-2">
           <h2 className="text-lg font-semibold text-slate-900">{trip.name}</h2>

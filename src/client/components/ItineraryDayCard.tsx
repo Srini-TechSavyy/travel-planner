@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
-import type { ItineraryDay } from "../../shared/types";
+import type { DayListItem, ItineraryDay } from "../../shared/types";
 import { dayCategories, dayTotal, hasDayBudget } from "../lib/budget";
 import { formatDayHeading, formatInr } from "../lib/format";
+
+const LIST_PREVIEW = 2;
 
 type Props = {
   day: ItineraryDay;
@@ -11,7 +13,18 @@ type Props = {
 export function ItineraryDayCard({ day, onEdit }: Props) {
   const from = day.from_location?.trim() ?? "";
   const to = day.to_location?.trim() ?? "";
-  const hasRoute = from && to;
+  const hasFrom = from.length > 0;
+  const hasTo = to.length > 0;
+  const hasTravel = hasFrom || hasTo;
+
+  const stay = day.stay_location?.trim() ?? "";
+
+  const travelMeta = [
+    day.distance_km != null ? formatKm(day.distance_km) : null,
+    day.drive_time ? `~${day.drive_time.replace(/^~/, "")}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   const budgetRows = hasDayBudget(day)
     ? (
@@ -25,105 +38,130 @@ export function ItineraryDayCard({ day, onEdit }: Props) {
       ).filter(([, v]) => v > 0)
     : [];
 
+  const hasItinerary =
+    hasTravel ||
+    stay.length > 0 ||
+    day.sightseeing.length > 0 ||
+    day.restaurants.length > 0 ||
+    day.foods.length > 0 ||
+    (day.notes && !hasTravel);
+
   return (
     <article className="card p-4 sm:p-5">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1 space-y-3">
-          <h3 className="text-sm font-bold tracking-wide text-slate-900">
-            {formatDayHeading(day.day_number, day.date)}
-          </h3>
+      <header className="flex items-start justify-between gap-3">
+        <h3 className="min-w-0 text-sm font-bold tracking-wide text-slate-900">
+          {formatDayHeading(day.day_number, day.date)}
+        </h3>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="btn-secondary shrink-0"
+        >
+          Edit Day
+        </button>
+      </header>
 
-          {hasRoute && (
-            <p className="font-medium text-slate-900">
-              {from} → {to}
-            </p>
-          )}
-          {hasRoute && (day.distance_km != null || day.drive_time) && (
-            <p className="text-sm text-slate-600">
-              {day.distance_km != null ? `${formatKm(day.distance_km)}` : ""}
-              {day.distance_km != null && day.drive_time ? " · " : ""}
-              {day.drive_time ? `~${day.drive_time.replace(/^~/, "")}` : ""}
-            </p>
-          )}
-
-          {day.stay_location && (
-            <div className="text-sm">
-              <p className="font-medium text-slate-700">Stay</p>
-              <p className="text-slate-600">{day.stay_location}</p>
+      {hasItinerary && (
+        <div className="mt-3 space-y-3 text-sm">
+          {hasTravel && (
+            <div>
+              <p className="font-medium text-slate-700">🚗 Travel</p>
+              <div className="mt-1 leading-snug text-slate-900">
+                {hasFrom && hasTo ? (
+                  <p className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 font-medium">
+                    <span>
+                      <span className="font-normal text-slate-600">From:</span>{" "}
+                      {from}
+                    </span>
+                    <span className="text-slate-400" aria-hidden>→</span>
+                    <span>
+                      <span className="font-normal text-slate-600">To:</span>{" "}
+                      {to}
+                    </span>
+                  </p>
+                ) : hasFrom ? (
+                  <p>
+                    <span className="text-slate-600">From:</span> {from}
+                  </p>
+                ) : (
+                  <p>
+                    <span className="text-slate-600">To:</span> {to}
+                  </p>
+                )}
+                {travelMeta && (
+                  <p className="mt-0.5 text-slate-600">{travelMeta}</p>
+                )}
+              </div>
             </div>
+          )}
+
+          {stay.length > 0 && (
+            <Section title="Stay At" icon="🏨">
+              <p className="text-slate-700">{stay}</p>
+            </Section>
           )}
 
           {day.sightseeing.length > 0 && (
             <Section title="Sightseeing" icon="📍">
-              <ul className="list-inside list-disc text-slate-700">
-                {day.sightseeing.map((s) => (
-                  <li key={s.id}>{s.name}</li>
-                ))}
-              </ul>
+              <NameList items={day.sightseeing} />
             </Section>
           )}
 
           {day.restaurants.length > 0 && (
             <Section title="Restaurants" icon="🍴">
-              <ul className="list-inside list-disc text-slate-700">
-                {day.restaurants.map((s) => (
-                  <li key={s.id}>{s.name}</li>
-                ))}
-              </ul>
+              <NameList items={day.restaurants} />
             </Section>
           )}
 
           {day.foods.length > 0 && (
             <Section title="Must Try Foods" icon="⭐">
-              <ul className="list-inside list-disc text-slate-700">
-                {day.foods.map((s) => (
-                  <li key={s.id}>{s.name}</li>
-                ))}
-              </ul>
+              <NameList items={day.foods} />
             </Section>
           )}
 
-          {hasDayBudget(day) ? (
-            <div className="text-sm">
-              <p className="font-medium text-slate-700">💰 Budget</p>
-              <dl className="mt-1 space-y-0.5">
-                {budgetRows.map(([label, value]) => (
-                  <div key={label} className="flex justify-between gap-4">
-                    <dt className="text-slate-600">{label}</dt>
-                    <dd className="font-medium text-slate-900">
-                      {formatInr(value)}
-                    </dd>
-                  </div>
-                ))}
-                <div className="flex justify-between gap-4 border-t border-slate-100 pt-1 font-semibold">
-                  <dt className="text-slate-800">Day Total</dt>
-                  <dd className="text-teal-700">{formatInr(dayTotal(day))}</dd>
-                </div>
-              </dl>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={onEdit}
-              className="text-sm font-medium text-teal-700 hover:underline"
-            >
-              Add Budget
-            </button>
-          )}
-
-          {day.notes && !hasRoute && (
-            <p className="text-sm text-slate-600">{day.notes}</p>
+          {day.notes && !hasTravel && (
+            <p className="text-slate-600">{day.notes}</p>
           )}
         </div>
+      )}
 
-        <button
-          type="button"
-          onClick={onEdit}
-          className="btn-secondary shrink-0 self-start"
+      {hasDayBudget(day) ? (
+        <div
+          className={
+            hasItinerary
+              ? "mt-4 border-t border-slate-100 pt-3"
+              : "mt-3"
+          }
         >
-          Edit Day
-        </button>
-      </div>
+          <p className="text-sm font-medium text-slate-600">💰 Budget</p>
+          <dl className="mt-2 space-y-0.5 text-sm">
+            {budgetRows.map(([label, value]) => (
+              <div key={label} className="flex justify-between gap-4">
+                <dt className="text-slate-600">{label}</dt>
+                <dd className="font-medium tabular-nums text-slate-800">
+                  {formatInr(value)}
+                </dd>
+              </div>
+            ))}
+            <div className="flex justify-between gap-4 border-t border-slate-100 pt-2 font-semibold">
+              <dt className="text-slate-800">Day Total</dt>
+              <dd className="tabular-nums text-teal-700">
+                {formatInr(dayTotal(day))}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      ) : (
+        <div className={hasItinerary ? "mt-3" : "mt-2"}>
+          <button
+            type="button"
+            onClick={onEdit}
+            className="text-sm font-medium text-teal-700 hover:underline"
+          >
+            Add Budget
+          </button>
+        </div>
+      )}
     </article>
   );
 }
@@ -138,12 +176,31 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <div className="text-sm">
+    <div>
       <p className="font-medium text-slate-700">
         {icon} {title}
       </p>
       <div className="mt-1">{children}</div>
     </div>
+  );
+}
+
+function NameList({ items }: { items: DayListItem[] }) {
+  const visible = items.slice(0, LIST_PREVIEW);
+  const more = items.length - visible.length;
+
+  return (
+    <ul className="space-y-0.5 text-slate-700">
+      {visible.map((item) => (
+        <li key={item.id} className="flex gap-2">
+          <span className="text-slate-400" aria-hidden>•</span>
+          <span>{item.name}</span>
+        </li>
+      ))}
+      {more > 0 && (
+        <li className="pl-4 text-slate-500">+ {more} more</li>
+      )}
+    </ul>
   );
 }
 

@@ -1,9 +1,9 @@
 import { nowIso } from "./client";
 import {
-  insertItineraryDayFull,
   insertItineraryDays,
   listDaysForTrip,
 } from "./itinerary-days";
+import { buildDayListStatements } from "./trip-day-lists";
 import type { ItineraryDay, Trip, TripListItem } from "../../shared/types";
 import type { z } from "zod";
 import type { importTripSchema } from "../validation";
@@ -84,6 +84,7 @@ export async function getTripForUser(
 export async function createTrip(
   db: D1Database,
   input: {
+    id?: string;
     userId: string;
     name: string;
     start_date: string;
@@ -93,30 +94,39 @@ export async function createTrip(
     starting_location?: string | null;
     destination?: string | null;
   },
-): Promise<Trip> {
-  const id = crypto.randomUUID();
+): Promise<{ trip: Trip; created: boolean }> {
+  const id = input.id ?? crypto.randomUUID();
+  const existing = await getTripForUser(db, id, input.userId);
+  if (existing) return { trip: existing, created: false };
+
   const ts = nowIso();
-  await db
-    .prepare(
-      `INSERT INTO trips (
+  try {
+    await db
+      .prepare(
+        `INSERT INTO trips (
         id, user_id, name, start_date, end_date, adults, children,
         starting_location, destination, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .bind(
-      id,
-      input.userId,
-      input.name,
-      input.start_date,
-      input.end_date,
-      input.adults,
-      input.children,
-      input.starting_location ?? null,
-      input.destination ?? null,
-      ts,
-      ts,
-    )
-    .run();
+      )
+      .bind(
+        id,
+        input.userId,
+        input.name,
+        input.start_date,
+        input.end_date,
+        input.adults,
+        input.children,
+        input.starting_location ?? null,
+        input.destination ?? null,
+        ts,
+        ts,
+      )
+      .run();
+  } catch {
+    const again = await getTripForUser(db, id, input.userId);
+    if (again) return { trip: again, created: false };
+    throw new Error("Failed to create trip");
+  }
 
   const dayDates = datesInclusive(input.start_date, input.end_date);
   await insertItineraryDays(
@@ -130,7 +140,7 @@ export async function createTrip(
 
   const trip = await getTripForUser(db, id, input.userId);
   if (!trip) throw new Error("Failed to create trip");
-  return trip;
+  return { trip, created: true };
 }
 
 export async function updateTripForUser(
@@ -193,56 +203,94 @@ export async function importTripForUser(
   db: D1Database,
   userId: string,
   payload: ImportPayload,
-): Promise<{ trip: Trip; days: ItineraryDay[] }> {
-  const id = crypto.randomUUID();
+): Promise<{ trip: Trip; days: ItineraryDay[]; created: boolean }> {
+  const id = payload.id ?? crypto.randomUUID();
+  const existing = await getTripForUser(db, id, userId);
+  if (existing) {
+    const days = await listDaysForTrip(db, id);
+    return { trip: existing, days, created: false };
+  }
+
   const ts = nowIso();
-  await db
-    .prepare(
-      `INSERT INTO trips (
+  const statements: D1PreparedStatement[] = [
+    db
+      .prepare(
+        `INSERT INTO trips (
         id, user_id, name, start_date, end_date, adults, children,
         starting_location, destination, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .bind(
-      id,
-      userId,
-      payload.name,
-      payload.start_date,
-      payload.end_date,
-      payload.adults,
-      payload.children,
-      payload.starting_location ?? null,
-      payload.destination ?? null,
-      ts,
-      ts,
-    )
-    .run();
+      )
+      .bind(
+        id,
+        userId,
+        payload.name,
+        payload.start_date,
+        payload.end_date,
+        payload.adults,
+        payload.children,
+        payload.starting_location ?? null,
+        payload.destination ?? null,
+        ts,
+        ts,
+      ),
+  ];
 
   for (const day of payload.days) {
-    await insertItineraryDayFull(db, id, {
-      day_number: day.day_number,
-      date: day.date,
-      from_location: day.from_location ?? null,
-      to_location: day.to_location ?? null,
-      distance_km: day.distance_km ?? null,
-      drive_time: day.drive_time ?? null,
-      stay_location: day.stay_location ?? null,
-      notes: day.notes ?? null,
-      travel_budget: day.travel_budget ?? null,
-      stay_budget: day.stay_budget ?? null,
-      restaurant_budget: day.restaurant_budget ?? null,
-      activities_budget: day.activities_budget ?? null,
-      other_budget: day.other_budget ?? null,
-      sightseeing: day.sightseeing,
-      restaurants: day.restaurants,
-      foods: day.foods,
-    });
+    const dayId = day.id ?? crypto.randomUUID();
+    statements.push(
+      db
+        .prepare(
+          `INSERT INTO itinerary_days (
+          id, trip_id, day_number, date,
+          from_location, to_location, distance_km, drive_time, stay_location, notes,
+          travel_budget, stay_budget, restaurant_budget, activities_budget, other_budget,
+          created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .bind(
+          dayId,
+          id,
+          day.day_number,
+          day.date,
+          day.from_location ?? null,
+          day.to_location ?? null,
+          day.distance_km ?? null,
+          day.drive_time ?? null,
+          day.stay_location ?? null,
+          day.notes ?? null,
+          day.travel_budget ?? null,
+          day.stay_budget ?? null,
+          day.restaurant_budget ?? null,
+          day.activities_budget ?? null,
+          day.other_budget ?? null,
+          ts,
+          ts,
+        ),
+    );
+    statements.push(
+      ...buildDayListStatements(db, dayId, {
+        sightseeing: day.sightseeing,
+        restaurants: day.restaurants,
+        foods: day.foods,
+      }),
+    );
+  }
+
+  try {
+    await db.batch(statements);
+  } catch {
+    const again = await getTripForUser(db, id, userId);
+    if (again) {
+      const days = await listDaysForTrip(db, id);
+      return { trip: again, days, created: false };
+    }
+    throw new Error("Failed to import trip");
   }
 
   const trip = await getTripForUser(db, id, userId);
   if (!trip) throw new Error("Failed to import trip");
   const days = await listDaysForTrip(db, id);
-  return { trip, days };
+  return { trip, days, created: true };
 }
 
 export async function deleteTripForUser(

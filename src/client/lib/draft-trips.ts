@@ -103,9 +103,20 @@ export function createDraftTrip(input: {
   };
   const dayDates = datesInclusive(input.start_date, input.end_date);
   const days = dayDates.map((date, i) => emptyDay(id, i + 1, date));
-  const bundle = { trip, days };
+  const bundle: StoredDraft = {
+    trip,
+    days,
+    server_trip_id: crypto.randomUUID(),
+  };
   saveDraftBundle(bundle);
   return bundle;
+}
+
+function ensureServerTripId(bundle: StoredDraft): string {
+  if (bundle.server_trip_id) return bundle.server_trip_id;
+  bundle.server_trip_id = crypto.randomUUID();
+  saveDraftBundle(bundle);
+  return bundle.server_trip_id;
 }
 
 export function updateDraftTripMeta(
@@ -163,7 +174,9 @@ export function appendDraftDay(tripId: string, date: string): StoredDraft | null
 }
 
 export function draftToImportPayload(bundle: StoredDraft) {
+  const tripId = ensureServerTripId(bundle);
   return {
+    id: tripId,
     name: bundle.trip.name,
     start_date: bundle.trip.start_date,
     end_date: bundle.trip.end_date,
@@ -172,6 +185,7 @@ export function draftToImportPayload(bundle: StoredDraft) {
     starting_location: bundle.trip.starting_location,
     destination: bundle.trip.destination,
     days: bundle.days.map((d) => ({
+      id: d.id,
       day_number: d.day_number,
       date: d.date,
       from_location: d.from_location,
@@ -186,14 +200,17 @@ export function draftToImportPayload(bundle: StoredDraft) {
       activities_budget: d.activities_budget,
       other_budget: d.other_budget,
       sightseeing: d.sightseeing.map((s, i) => ({
+        id: s.id,
         name: s.name,
         sort_order: s.sort_order ?? i,
       })),
       restaurants: d.restaurants.map((s, i) => ({
+        id: s.id,
         name: s.name,
         sort_order: s.sort_order ?? i,
       })),
       foods: d.foods.map((s, i) => ({
+        id: s.id,
         name: s.name,
         sort_order: s.sort_order ?? i,
       })),

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { apiFetch } from "../api/client";
 import { TripForm, type TripFormValues } from "../components/TripForm";
@@ -15,6 +15,7 @@ export function CreateTripPage() {
   const { user } = useAuth();
   const [params] = useSearchParams();
   const editDraftId = params.get("edit");
+  const clientTripIdRef = useRef(crypto.randomUUID());
 
   const editingDraft = useMemo(
     () => (editDraftId ? getDraftTrip(editDraftId) : null),
@@ -50,19 +51,24 @@ export function CreateTripPage() {
       return;
     }
 
-    const data = await apiFetch<{ trip: Trip }>("/api/trips", {
-      method: "POST",
-      body: JSON.stringify({
-        name: values.name,
-        start_date: values.start_date,
-        end_date: values.end_date,
-        adults: values.adults,
-        children: values.children,
-        starting_location: values.starting_location.trim() || null,
-        destination: values.destination.trim() || null,
-      }),
-    });
-    navigate(`/trips/${data.trip.id}`);
+    try {
+      const data = await apiFetch<{ trip: Trip }>("/api/trips", {
+        method: "POST",
+        body: JSON.stringify({
+          id: clientTripIdRef.current,
+          name: values.name,
+          start_date: values.start_date,
+          end_date: values.end_date,
+          adults: values.adults,
+          children: values.children,
+          starting_location: values.starting_location.trim() || null,
+          destination: values.destination.trim() || null,
+        }),
+      });
+      navigate(`/trips/${data.trip.id}`);
+    } catch {
+      throw new Error("create failed");
+    }
   }
 
   const initial = editingDraft

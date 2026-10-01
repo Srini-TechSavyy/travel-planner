@@ -16,6 +16,7 @@ const listItemSchema = z.object({
 
 export const createTripSchema = z
   .object({
+    id: z.string().uuid().optional(),
     name: z.string().trim().min(1).max(200),
     start_date: dateString,
     end_date: dateString,
@@ -70,6 +71,7 @@ export const addDaySchema = z.object({
 });
 
 const importDaySchema = z.object({
+  id: z.string().uuid().optional(),
   day_number: z.number().int().min(1).max(366),
   date: dateString,
   from_location: z.string().trim().max(500).nullable().optional(),
@@ -90,6 +92,7 @@ const importDaySchema = z.object({
 
 export const importTripSchema = z
   .object({
+    id: z.string().uuid().optional(),
     name: z.string().trim().min(1).max(200),
     start_date: dateString,
     end_date: dateString,
