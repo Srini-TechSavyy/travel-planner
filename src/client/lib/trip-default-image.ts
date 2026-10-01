@@ -83,5 +83,5 @@ export function getDefaultTripImage(
       return `${BASE}/${file}`;
     }
   }
-  return `${BASE}/generic.jpg`;
+  return `${BASE}/generic.svg`;
 }
