@@ -242,10 +242,10 @@ export async function importTripForUser(
         .prepare(
           `INSERT INTO itinerary_days (
           id, trip_id, day_number, date,
-          from_location, to_location, distance_km, drive_time, stay_location, notes,
+          from_location, to_location, distance_km, drive_time, stay_name, stay_location, notes,
           travel_budget, stay_budget, restaurant_budget, activities_budget, other_budget,
           created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
           dayId,
@@ -256,6 +256,7 @@ export async function importTripForUser(
           day.to_location ?? null,
           day.distance_km ?? null,
           day.drive_time ?? null,
+          day.stay_name ?? null,
           day.stay_location ?? null,
           day.notes ?? null,
           day.travel_budget ?? null,

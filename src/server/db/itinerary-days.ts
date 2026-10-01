@@ -16,6 +16,7 @@ export type ItineraryDayRow = {
   to_location: string | null;
   distance_km: number | null;
   drive_time: string | null;
+  stay_name: string | null;
   stay_location: string | null;
   notes: string | null;
   travel_budget: number | null;
@@ -70,10 +71,10 @@ export async function insertItineraryDays(
       .prepare(
         `INSERT INTO itinerary_days (
           id, trip_id, day_number, date,
-          from_location, to_location, distance_km, drive_time, stay_location, notes,
+          from_location, to_location, distance_km, drive_time, stay_name, stay_location, notes,
           travel_budget, stay_budget, restaurant_budget, activities_budget, other_budget,
           created_at, updated_at
-        ) VALUES (?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?, ?)`,
       )
       .bind(crypto.randomUUID(), tripId, day.day_number, day.date, ts, ts)
       .run();
@@ -91,6 +92,7 @@ export async function insertItineraryDayFull(
     to_location?: string | null;
     distance_km?: number | null;
     drive_time?: string | null;
+    stay_name?: string | null;
     stay_location?: string | null;
     notes?: string | null;
     travel_budget?: number | null;
@@ -109,10 +111,10 @@ export async function insertItineraryDayFull(
     .prepare(
       `INSERT INTO itinerary_days (
         id, trip_id, day_number, date,
-        from_location, to_location, distance_km, drive_time, stay_location, notes,
+        from_location, to_location, distance_km, drive_time, stay_name, stay_location, notes,
         travel_budget, stay_budget, restaurant_budget, activities_budget, other_budget,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       id,
@@ -123,6 +125,7 @@ export async function insertItineraryDayFull(
       day.to_location ?? null,
       day.distance_km ?? null,
       day.drive_time ?? null,
+      day.stay_name ?? null,
       day.stay_location ?? null,
       day.notes ?? null,
       day.travel_budget ?? null,
@@ -177,6 +180,7 @@ export type UpdateDayFields = {
   to_location: string | null;
   distance_km: number | null;
   drive_time: string | null;
+  stay_name: string | null;
   stay_location: string | null;
   notes: string | null;
   travel_budget: number | null;
@@ -204,6 +208,7 @@ export async function updateItineraryDay(
         to_location = ?,
         distance_km = ?,
         drive_time = ?,
+        stay_name = ?,
         stay_location = ?,
         notes = ?,
         travel_budget = ?,
@@ -220,6 +225,7 @@ export async function updateItineraryDay(
       fields.to_location,
       fields.distance_km,
       fields.drive_time,
+      fields.stay_name,
       fields.stay_location,
       fields.notes,
       fields.travel_budget,
@@ -275,10 +281,10 @@ export async function appendItineraryDay(
     .prepare(
       `INSERT INTO itinerary_days (
         id, trip_id, day_number, date,
-        from_location, to_location, distance_km, drive_time, stay_location, notes,
+        from_location, to_location, distance_km, drive_time, stay_name, stay_location, notes,
         travel_budget, stay_budget, restaurant_budget, activities_budget, other_budget,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?, ?)`,
     )
     .bind(id, tripId, next, date, ts, ts)
     .run();

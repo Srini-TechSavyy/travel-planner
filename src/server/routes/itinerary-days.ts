@@ -71,6 +71,7 @@ itineraryDayRoutes.patch("/:tripId/days/:dayId", async (c) => {
     to_location: parsed.data.to_location ?? null,
     distance_km: parsed.data.distance_km ?? null,
     drive_time: parsed.data.drive_time ?? null,
+    stay_name: parsed.data.stay_name ?? null,
     stay_location: parsed.data.stay_location ?? null,
     notes: parsed.data.notes ?? null,
     travel_budget: parsed.data.travel_budget ?? null,

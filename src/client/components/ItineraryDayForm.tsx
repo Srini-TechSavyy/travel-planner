@@ -8,6 +8,7 @@ export type DayFormValues = {
   to_location: string;
   distance_km: string;
   drive_time: string;
+  stay_name: string;
   stay_location: string;
   notes: string;
   travel_budget: string;
@@ -138,7 +139,17 @@ export function ItineraryDayForm({ day, open, onClose, onSave }: Props) {
                 Stay
               </p>
               <label className="block text-sm">
-                <span className="font-medium text-slate-700">Stay</span>
+                <span className="font-medium text-slate-700">Hotel / Resort</span>
+                <input
+                  value={values.stay_name}
+                  onChange={(e) =>
+                    setValues((v) => ({ ...v, stay_name: e.target.value }))
+                  }
+                  className="input mt-1"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="font-medium text-slate-700">Location</span>
                 <input
                   value={values.stay_location}
                   onChange={(e) =>
@@ -243,6 +254,7 @@ function toForm(day: ItineraryDay): DayFormValues {
     to_location: day.to_location ?? "",
     distance_km: day.distance_km != null ? String(day.distance_km) : "",
     drive_time: day.drive_time ?? "",
+    stay_name: day.stay_name ?? "",
     stay_location: day.stay_location ?? "",
     notes: day.notes ?? "",
     travel_budget: day.travel_budget != null ? String(day.travel_budget) : "",

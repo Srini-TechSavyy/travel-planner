@@ -30,6 +30,7 @@ function formToDayPatch(values: DayFormValues) {
     to_location: values.to_location.trim() || null,
     distance_km: values.distance_km ? Number(values.distance_km) : null,
     drive_time: values.drive_time.trim() || null,
+    stay_name: values.stay_name.trim() || null,
     stay_location: values.stay_location.trim() || null,
     notes: values.notes.trim() || null,
     travel_budget: parseBudget(values.travel_budget),

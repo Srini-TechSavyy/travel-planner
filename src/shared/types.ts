@@ -38,6 +38,7 @@ export type ItineraryDay = {
   to_location: string | null;
   distance_km: number | null;
   drive_time: string | null;
+  stay_name: string | null;
   stay_location: string | null;
   notes: string | null;
   travel_budget: number | null;

@@ -17,7 +17,9 @@ export function ItineraryDayCard({ day, onEdit }: Props) {
   const hasTo = to.length > 0;
   const hasTravel = hasFrom || hasTo;
 
-  const stay = day.stay_location?.trim() ?? "";
+  const stayName = day.stay_name?.trim() ?? "";
+  const stayLocation = day.stay_location?.trim() ?? "";
+  const stayDisplay = [stayName, stayLocation].filter(Boolean).join(" · ");
 
   const travelMeta = [
     day.distance_km != null ? formatKm(day.distance_km) : null,
@@ -40,7 +42,7 @@ export function ItineraryDayCard({ day, onEdit }: Props) {
 
   const hasItinerary =
     hasTravel ||
-    stay.length > 0 ||
+    stayDisplay.length > 0 ||
     day.sightseeing.length > 0 ||
     day.restaurants.length > 0 ||
     day.foods.length > 0 ||
@@ -95,9 +97,9 @@ export function ItineraryDayCard({ day, onEdit }: Props) {
             </div>
           )}
 
-          {stay.length > 0 && (
-            <Section title="Stay At" icon="🏨">
-              <p className="text-slate-700">{stay}</p>
+          {stayDisplay.length > 0 && (
+            <Section title="Stay" icon="🏨">
+              <p className="text-slate-700">{stayDisplay}</p>
             </Section>
           )}
 
