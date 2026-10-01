@@ -1,0 +1,129 @@
+import { Hono } from "hono";
+import type { Env } from "../../env";
+import { requireAuth, type AuthVariables } from "../auth/middleware";
+import { listDaysForTrip } from "../db/itinerary-days";
+import {
+  createTrip,
+  deleteTripForUser,
+  getTripForUser,
+  importTripForUser,
+  listTripsForUser,
+  updateTripForUser,
+} from "../db/trips";
+import {
+  createTripSchema,
+  importTripSchema,
+  updateTripSchema,
+} from "../validation";
+
+export const tripRoutes = new Hono<{
+  Bindings: Env;
+  Variables: AuthVariables;
+}>();
+
+tripRoutes.use("*", requireAuth);
+
+tripRoutes.get("/", async (c) => {
+  const user = c.get("user");
+  const trips = await listTripsForUser(c.env.DB, user.id);
+  return c.json({ trips });
+});
+
+tripRoutes.post("/import", async (c) => {
+  const user = c.get("user");
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+  const parsed = importTripSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json(
+      { error: "Invalid trip data", details: parsed.error.flatten() },
+      400,
+    );
+  }
+  try {
+    const result = await importTripForUser(c.env.DB, user.id, parsed.data);
+    return c.json(result, 201);
+  } catch {
+    return c.json({ error: "Unable to import trip" }, 500);
+  }
+});
+
+tripRoutes.post("/", async (c) => {
+  const user = c.get("user");
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+  const parsed = createTripSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "Invalid trip data", details: parsed.error.flatten() }, 400);
+  }
+  try {
+    const trip = await createTrip(c.env.DB, {
+      userId: user.id,
+      ...parsed.data,
+      starting_location: parsed.data.starting_location ?? null,
+      destination: parsed.data.destination ?? null,
+    });
+    return c.json({ trip }, 201);
+  } catch {
+    return c.json({ error: "Unable to create trip" }, 500);
+  }
+});
+
+tripRoutes.get("/:tripId", async (c) => {
+  const user = c.get("user");
+  const tripId = c.req.param("tripId");
+  const trip = await getTripForUser(c.env.DB, tripId, user.id);
+  if (!trip) {
+    return c.json({ error: "Trip not found" }, 404);
+  }
+  const days = await listDaysForTrip(c.env.DB, tripId);
+  return c.json({ trip, days });
+});
+
+tripRoutes.patch("/:tripId", async (c) => {
+  const user = c.get("user");
+  const tripId = c.req.param("tripId");
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+  const parsed = updateTripSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "Invalid trip data", details: parsed.error.flatten() }, 400);
+  }
+  const trip = await updateTripForUser(c.env.DB, tripId, user.id, {
+    ...parsed.data,
+    starting_location:
+      parsed.data.starting_location !== undefined
+        ? parsed.data.starting_location ?? null
+        : undefined,
+    destination:
+      parsed.data.destination !== undefined
+        ? parsed.data.destination ?? null
+        : undefined,
+  });
+  if (!trip) {
+    return c.json({ error: "Trip not found" }, 404);
+  }
+  return c.json({ trip });
+});
+
+tripRoutes.delete("/:tripId", async (c) => {
+  const user = c.get("user");
+  const tripId = c.req.param("tripId");
+  const deleted = await deleteTripForUser(c.env.DB, tripId, user.id);
+  if (!deleted) {
+    return c.json({ error: "Trip not found" }, 404);
+  }
+  return c.json({ ok: true });
+});

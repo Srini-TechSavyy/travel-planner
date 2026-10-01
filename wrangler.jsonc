@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "tripmate",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-03-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/auth/*"]
+  },
+  "routes": [
+    {
+      "pattern": "tripmate.techsavyy.com",
+      "custom_domain": true
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tripmate-db",
+      "database_id": "73db79f2-967a-439b-b2b0-52fde5a43f73",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
