@@ -1,11 +1,14 @@
 import type { ItineraryDay, Trip } from "../../shared/types";
 import { buildTripRoute } from "./route";
+import beachImage from "../assets/trip-defaults/beach.jpg";
+import genericImage from "../assets/trip-defaults/generic.svg";
+import keralaImage from "../assets/trip-defaults/kerala.jpg";
+import mountainsImage from "../assets/trip-defaults/mountains.jpg";
+import templeImage from "../assets/trip-defaults/temple.jpg";
 
-const BASE = "/trip-defaults";
-
-const CATEGORIES: { file: string; keywords: string[] }[] = [
+const CATEGORIES: { image: string; keywords: string[] }[] = [
   {
-    file: "kerala.jpg",
+    image: keralaImage,
     keywords: [
       "kerala",
       "kumarakom",
@@ -17,7 +20,7 @@ const CATEGORIES: { file: string; keywords: string[] }[] = [
     ],
   },
   {
-    file: "beach.jpg",
+    image: beachImage,
     keywords: [
       "pondicherry",
       "puducherry",
@@ -28,7 +31,7 @@ const CATEGORIES: { file: string; keywords: string[] }[] = [
     ],
   },
   {
-    file: "temple.jpg",
+    image: templeImage,
     keywords: [
       "madurai",
       "thanjavur",
@@ -39,7 +42,7 @@ const CATEGORIES: { file: string; keywords: string[] }[] = [
     ],
   },
   {
-    file: "mountains.jpg",
+    image: mountainsImage,
     keywords: [
       "munnar",
       "ooty",
@@ -78,10 +81,10 @@ export function getDefaultTripImage(
   days?: ItineraryDay[],
 ): string {
   const haystack = buildHaystack(trip, days);
-  for (const { file, keywords } of CATEGORIES) {
+  for (const { image, keywords } of CATEGORIES) {
     if (keywords.some((kw) => haystack.includes(kw))) {
-      return `${BASE}/${file}`;
+      return image;
     }
   }
-  return `${BASE}/generic.svg`;
+  return genericImage;
 }
