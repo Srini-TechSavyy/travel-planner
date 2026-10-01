@@ -1,10 +1,12 @@
 import type { ItineraryDay, Trip } from "../../shared/types";
 import { buildTripRoute } from "./route";
-import beachImage from "../assets/trip-defaults/beach.jpg";
-import genericImage from "../assets/trip-defaults/generic.svg";
-import keralaImage from "../assets/trip-defaults/kerala.jpg";
-import mountainsImage from "../assets/trip-defaults/mountains.jpg";
-import templeImage from "../assets/trip-defaults/temple.jpg";
+const BASE = "/trip-defaults";
+
+const beachImage = `${BASE}/beach.jpg`;
+const genericImage = `${BASE}/generic.svg`;
+const keralaImage = `${BASE}/kerala.jpg`;
+const mountainsImage = `${BASE}/mountains.jpg`;
+const templeImage = `${BASE}/temple.jpg`;
 
 const CATEGORIES: { image: string; keywords: string[] }[] = [
   {
