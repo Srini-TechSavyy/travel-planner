@@ -1,14 +1,11 @@
 import type { ItineraryDay, Trip } from "../../shared/types";
 import { buildTripRoute } from "./route";
-import beachImage from "../assets/trip-defaults/beach.jpg";
-import genericImage from "../assets/trip-defaults/generic.svg";
-import keralaImage from "../assets/trip-defaults/kerala.jpg";
-import mountainsImage from "../assets/trip-defaults/mountains.jpg";
-import templeImage from "../assets/trip-defaults/temple.jpg";
+
+const BASE = "/trip-defaults";
 
 const CATEGORIES: { image: string; keywords: string[] }[] = [
   {
-    image: keralaImage,
+    image: `${BASE}/kerala.jpg`,
     keywords: [
       "kerala",
       "kumarakom",
@@ -20,7 +17,7 @@ const CATEGORIES: { image: string; keywords: string[] }[] = [
     ],
   },
   {
-    image: beachImage,
+    image: `${BASE}/beach.jpg`,
     keywords: [
       "pondicherry",
       "puducherry",
@@ -31,7 +28,7 @@ const CATEGORIES: { image: string; keywords: string[] }[] = [
     ],
   },
   {
-    image: templeImage,
+    image: `${BASE}/temple.jpg`,
     keywords: [
       "madurai",
       "thanjavur",
@@ -42,7 +39,7 @@ const CATEGORIES: { image: string; keywords: string[] }[] = [
     ],
   },
   {
-    image: mountainsImage,
+    image: `${BASE}/mountains.jpg`,
     keywords: [
       "munnar",
       "ooty",
@@ -86,5 +83,5 @@ export function getDefaultTripImage(
       return image;
     }
   }
-  return genericImage;
+  return `${BASE}/generic.svg`;
 }
