@@ -1,4 +1,4 @@
-# TripMate v2
+# TripMate v3
 
 A simple personal travel planner: sign in with Google, create trips, and save day-by-day itineraries in Cloudflare D1.
 
