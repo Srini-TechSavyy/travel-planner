@@ -68,38 +68,78 @@ export function LocationAutocompleteInput({
   }, []);
 
   const cancelPending = useCallback(() => {
+    const hadDebounce = debounceRef.current != null;
+    const hadAbort = abortRef.current != null;
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
       debounceRef.current = null;
     }
     abortRef.current?.abort();
     abortRef.current = null;
+    if (hadDebounce || hadAbort) {
+      console.debug("[LocationAutocomplete] cancelPending()", {
+        clearedDebounce: hadDebounce,
+        abortedInFlightRequest: hadAbort,
+      });
+    }
   }, []);
 
   const runAutocomplete = useCallback(
     (input: string) => {
+      console.debug("[LocationAutocomplete] runAutocomplete() entered", {
+        input,
+        placesEnabled,
+        resolving,
+        selectedLabel: selectedLabelRef.current,
+        minInputLength: MIN_INPUT_LENGTH,
+      });
       cancelPending();
       if (!placesEnabled || resolving) {
+        console.debug(
+          "[LocationAutocomplete] runAutocomplete() blocked: placesEnabled or resolving",
+          { placesEnabled, resolving },
+        );
         setSuggestions([]);
         setOpen(false);
         return;
       }
 
       const trimmed = input.trim();
-      if (trimmed.length < MIN_INPUT_LENGTH) {
+      const minLengthPasses = trimmed.length >= MIN_INPUT_LENGTH;
+      console.debug("[LocationAutocomplete] runAutocomplete() trimmed input", {
+        trimmed,
+        trimmedLength: trimmed.length,
+        minLengthPasses,
+      });
+      if (!minLengthPasses) {
+        console.debug(
+          "[LocationAutocomplete] runAutocomplete() blocked: below MIN_INPUT_LENGTH",
+        );
         setSuggestions([]);
         setStatusMessage(null);
         setOpen(false);
         return;
       }
 
-      if (selectedLabelRef.current && trimmed === selectedLabelRef.current) {
+      const matchesSelectedLabel =
+        Boolean(selectedLabelRef.current) &&
+        trimmed === selectedLabelRef.current;
+      if (matchesSelectedLabel) {
+        console.debug(
+          "[LocationAutocomplete] runAutocomplete() blocked: matches selectedLabel",
+          { trimmed, selectedLabel: selectedLabelRef.current },
+        );
         setSuggestions([]);
         setOpen(false);
         return;
       }
 
+      console.debug("[LocationAutocomplete] debounce scheduled", {
+        debounceMs: DEBOUNCE_MS,
+        trimmed,
+      });
       debounceRef.current = setTimeout(() => {
+        console.debug("[LocationAutocomplete] debounce fired", { trimmed });
         const controller = new AbortController();
         abortRef.current = controller;
         setLoading(true);
@@ -107,6 +147,14 @@ export function LocationAutocompleteInput({
         void (async () => {
           try {
             const token = ensureSessionToken();
+            console.debug(
+              "[LocationAutocomplete] calling fetchPlaceSuggestions()",
+              {
+                trimmed,
+                hasSessionToken: Boolean(token),
+                signalAborted: controller.signal.aborted,
+              },
+            );
             const results = await fetchPlaceSuggestions(
               trimmed,
               token,
@@ -188,10 +236,21 @@ export function LocationAutocompleteInput({
   }
 
   function handleInputChange(next: string) {
+    console.debug("[LocationAutocomplete] handleInputChange()", {
+      next,
+      placesEnabled,
+      resolving,
+      inputDisabled: resolving,
+      selectedLabel: selectedLabelRef.current,
+    });
     if (
       selectedLabelRef.current != null &&
       next !== selectedLabelRef.current
     ) {
+      console.debug(
+        "[LocationAutocomplete] handleInputChange() clearing selected place",
+        { previousSelectedLabel: selectedLabelRef.current, next },
+      );
       selectedLabelRef.current = null;
       onPlaceCleared();
       ensureSessionToken();
@@ -226,9 +285,28 @@ export function LocationAutocompleteInput({
     <div ref={containerRef} className="relative">
       <input
         value={value}
-        onChange={(e) => handleInputChange(e.target.value)}
+        onChange={(e) => {
+          const inputValue = e.target.value;
+          console.debug("[LocationAutocomplete] input onChange", {
+            inputValue,
+            placesEnabled,
+            resolving,
+            inputDisabled: resolving,
+          });
+          handleInputChange(inputValue);
+        }}
         onFocus={() => {
-          if (!placesEnabled) return;
+          console.debug("[LocationAutocomplete] input onFocus", {
+            value,
+            placesEnabled,
+            resolving,
+          });
+          if (!placesEnabled) {
+            console.debug(
+              "[LocationAutocomplete] onFocus skipped: places not enabled",
+            );
+            return;
+          }
           ensureSessionToken();
           if (value.trim().length >= MIN_INPUT_LENGTH) {
             runAutocomplete(value);

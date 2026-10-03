@@ -62,8 +62,19 @@ export async function fetchPlaceSuggestions(
   sessionToken: string,
   signal?: AbortSignal,
 ): Promise<PlaceSuggestion[]> {
+  console.debug("[LocationAutocomplete] fetchPlaceSuggestions() entered", {
+    input,
+    hasSessionToken: Boolean(sessionToken),
+    signalAborted: signal?.aborted ?? false,
+    apiKeyConfigured: Boolean(getApiKey()),
+  });
   const apiKey = getApiKey();
-  if (!apiKey) return [];
+  if (!apiKey) {
+    console.debug(
+      "[LocationAutocomplete] fetchPlaceSuggestions() returning early: no API key",
+    );
+    return [];
+  }
 
   const response = await fetch(AUTOCOMPLETE_URL, {
     method: "POST",

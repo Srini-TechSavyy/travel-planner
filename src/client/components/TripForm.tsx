@@ -2,6 +2,7 @@ import { useState, useRef, type FormEvent, type ReactNode } from "react";
 import type { TripLocationMeta } from "../../shared/trip-location";
 import { tripLocationMetaFromPlace } from "../lib/trip-form-location";
 import { LocationAutocompleteInput } from "./LocationAutocompleteInput";
+import { TripNameInput } from "./TripNameInput";
 
 export type TripFormValues = {
   name: string;
@@ -69,11 +70,9 @@ export function TripForm({
         </p>
       )}
       <Field label="Trip name">
-        <input
-          required
+        <TripNameInput
           value={values.name}
-          onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))}
-          className="input"
+          onChange={(name) => setValues((v) => ({ ...v, name }))}
           placeholder="Kerala Family Trip"
         />
       </Field>
