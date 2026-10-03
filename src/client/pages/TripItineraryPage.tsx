@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { apiFetch } from "../api/client";
 import { ItineraryDayForm } from "../components/ItineraryDayForm";
 import { ItineraryDayCard } from "../components/ItineraryDayCard";
+import { ItineraryDaySummaryRow } from "../components/ItineraryDaySummary";
 import { BudgetSummary } from "../components/BudgetSummary";
 import { ErrorMessage } from "../components/ErrorMessage";
 import { LoadingState } from "../components/LoadingState";
@@ -233,7 +234,13 @@ export function TripItineraryPage() {
         </div>
       )}
 
-      <div className="mt-8 space-y-4">
+      {days.length > 0 && (
+        <div className="mt-8">
+          <ItineraryDaySummaryRow days={days} />
+        </div>
+      )}
+
+      <div className="mt-4 space-y-4">
         {days.map((day) => (
           <ItineraryDayCard
             key={day.id}
