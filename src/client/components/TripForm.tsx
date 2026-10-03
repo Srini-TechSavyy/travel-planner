@@ -1,4 +1,7 @@
 import { useState, useRef, type FormEvent, type ReactNode } from "react";
+import type { TripLocationMeta } from "../../shared/trip-location";
+import { tripLocationMetaFromPlace } from "../lib/trip-form-location";
+import { LocationAutocompleteInput } from "./LocationAutocompleteInput";
 
 export type TripFormValues = {
   name: string;
@@ -8,6 +11,8 @@ export type TripFormValues = {
   children: number;
   starting_location: string;
   destination: string;
+  starting_location_meta: TripLocationMeta | null;
+  destination_meta: TripLocationMeta | null;
 };
 
 type Props = {
@@ -29,6 +34,8 @@ export function TripForm({
     children: initial?.children ?? 0,
     starting_location: initial?.starting_location ?? "",
     destination: initial?.destination ?? "",
+    starting_location_meta: initial?.starting_location_meta ?? null,
+    destination_meta: initial?.destination_meta ?? null,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -123,23 +130,47 @@ export function TripForm({
         </Field>
       </div>
       <Field label="Starting location">
-        <input
+        <LocationAutocompleteInput
           value={values.starting_location}
-          onChange={(e) =>
-            setValues((v) => ({ ...v, starting_location: e.target.value }))
-          }
-          className="input"
           placeholder="Chennai"
+          selectedDisplayName={
+            values.starting_location_meta ? values.starting_location : null
+          }
+          onValueChange={(starting_location) =>
+            setValues((v) => ({ ...v, starting_location }))
+          }
+          onPlaceSelected={(place) =>
+            setValues((v) => ({
+              ...v,
+              starting_location: place.display_name,
+              starting_location_meta: tripLocationMetaFromPlace(place),
+            }))
+          }
+          onPlaceCleared={() =>
+            setValues((v) => ({ ...v, starting_location_meta: null }))
+          }
         />
       </Field>
       <Field label="Destination">
-        <input
+        <LocationAutocompleteInput
           value={values.destination}
-          onChange={(e) =>
-            setValues((v) => ({ ...v, destination: e.target.value }))
-          }
-          className="input"
           placeholder="Kerala"
+          selectedDisplayName={
+            values.destination_meta ? values.destination : null
+          }
+          onValueChange={(destination) =>
+            setValues((v) => ({ ...v, destination }))
+          }
+          onPlaceSelected={(place) =>
+            setValues((v) => ({
+              ...v,
+              destination: place.display_name,
+              destination_meta: tripLocationMetaFromPlace(place),
+            }))
+          }
+          onPlaceCleared={() =>
+            setValues((v) => ({ ...v, destination_meta: null }))
+          }
         />
       </Field>
       <button type="submit" disabled={saving} className="btn-primary w-full sm:w-auto">

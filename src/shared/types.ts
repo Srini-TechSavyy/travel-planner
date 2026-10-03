@@ -15,6 +15,16 @@ export type Trip = {
   children: number;
   starting_location: string | null;
   destination: string | null;
+  starting_location_place_id: string | null;
+  starting_location_lat: number | null;
+  starting_location_lng: number | null;
+  starting_location_country: string | null;
+  starting_location_admin_area: string | null;
+  destination_place_id: string | null;
+  destination_lat: number | null;
+  destination_lng: number | null;
+  destination_country: string | null;
+  destination_admin_area: string | null;
   created_at: string;
   updated_at: string;
 };

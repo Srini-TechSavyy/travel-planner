@@ -5,6 +5,10 @@ import { TripForm, type TripFormValues } from "../components/TripForm";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorMessage } from "../components/ErrorMessage";
 import { isDraftTripId } from "../lib/draft-trips";
+import {
+  tripFormValuesFromTrip,
+  tripLocationFieldsFromForm,
+} from "../lib/trip-form-location";
 import type { Trip } from "../../shared/types";
 
 export function EditTripPage() {
@@ -42,8 +46,7 @@ export function EditTripPage() {
         end_date: values.end_date,
         adults: values.adults,
         children: values.children,
-        starting_location: values.starting_location.trim() || null,
-        destination: values.destination.trim() || null,
+        ...tripLocationFieldsFromForm(values),
       }),
     });
     navigate(`/trips/${tripId}`);
@@ -69,8 +72,7 @@ export function EditTripPage() {
             end_date: trip.end_date,
             adults: trip.adults,
             children: trip.children,
-            starting_location: trip.starting_location ?? "",
-            destination: trip.destination ?? "",
+            ...tripFormValuesFromTrip(trip),
           }}
           onSubmit={handleSubmit}
           submitLabel="Save Trip"

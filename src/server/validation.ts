@@ -6,6 +6,26 @@ const dateString = z
 
 const locationString = z.string().trim().max(500).nullable().optional();
 
+const placeIdString = z.string().trim().min(1).max(500).nullable().optional();
+const latitude = z.number().min(-90).max(90).nullable().optional();
+const longitude = z.number().min(-180).max(180).nullable().optional();
+const regionString = z.string().trim().max(200).nullable().optional();
+
+const tripLocationFields = {
+  starting_location: locationString,
+  destination: locationString,
+  starting_location_place_id: placeIdString,
+  starting_location_lat: latitude,
+  starting_location_lng: longitude,
+  starting_location_country: regionString,
+  starting_location_admin_area: regionString,
+  destination_place_id: placeIdString,
+  destination_lat: latitude,
+  destination_lng: longitude,
+  destination_country: regionString,
+  destination_admin_area: regionString,
+};
+
 const budgetField = z.number().int().min(0).max(100_000_000).nullable().optional();
 
 const listItemSchema = z.object({
@@ -22,8 +42,7 @@ export const createTripSchema = z
     end_date: dateString,
     adults: z.number().int().min(0).max(99),
     children: z.number().int().min(0).max(99),
-    starting_location: locationString,
-    destination: locationString,
+    ...tripLocationFields,
   })
   .refine((d) => d.end_date >= d.start_date, {
     message: "End date must be on or after start date",
@@ -37,8 +56,7 @@ export const updateTripSchema = z
     end_date: dateString.optional(),
     adults: z.number().int().min(0).max(99).optional(),
     children: z.number().int().min(0).max(99).optional(),
-    starting_location: locationString,
-    destination: locationString,
+    ...tripLocationFields,
   })
   .refine(
     (d) => {
@@ -100,8 +118,7 @@ export const importTripSchema = z
     end_date: dateString,
     adults: z.number().int().min(0).max(99),
     children: z.number().int().min(0).max(99),
-    starting_location: locationString,
-    destination: locationString,
+    ...tripLocationFields,
     days: z.array(importDaySchema).min(1).max(366),
   })
   .refine((d) => d.end_date >= d.start_date, {

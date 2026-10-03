@@ -78,15 +78,31 @@ export function deleteDraftTrip(tripId: string): void {
   writeAll(readAll().filter((d) => d.trip.id !== tripId));
 }
 
-export function createDraftTrip(input: {
-  name: string;
-  start_date: string;
-  end_date: string;
-  adults: number;
-  children: number;
-  starting_location?: string;
-  destination?: string;
-}): StoredDraft {
+type TripLocationDbFields = Pick<
+  Trip,
+  | "starting_location"
+  | "destination"
+  | "starting_location_place_id"
+  | "starting_location_lat"
+  | "starting_location_lng"
+  | "starting_location_country"
+  | "starting_location_admin_area"
+  | "destination_place_id"
+  | "destination_lat"
+  | "destination_lng"
+  | "destination_country"
+  | "destination_admin_area"
+>;
+
+export function createDraftTrip(
+  input: {
+    name: string;
+    start_date: string;
+    end_date: string;
+    adults: number;
+    children: number;
+  } & Partial<TripLocationDbFields>,
+): StoredDraft {
   const id = `${DRAFT_ID_PREFIX}${crypto.randomUUID()}`;
   const ts = new Date().toISOString();
   const trip: Trip = {
@@ -99,6 +115,16 @@ export function createDraftTrip(input: {
     children: input.children,
     starting_location: input.starting_location?.trim() || null,
     destination: input.destination?.trim() || null,
+    starting_location_place_id: input.starting_location_place_id ?? null,
+    starting_location_lat: input.starting_location_lat ?? null,
+    starting_location_lng: input.starting_location_lng ?? null,
+    starting_location_country: input.starting_location_country ?? null,
+    starting_location_admin_area: input.starting_location_admin_area ?? null,
+    destination_place_id: input.destination_place_id ?? null,
+    destination_lat: input.destination_lat ?? null,
+    destination_lng: input.destination_lng ?? null,
+    destination_country: input.destination_country ?? null,
+    destination_admin_area: input.destination_admin_area ?? null,
     created_at: ts,
     updated_at: ts,
   };
@@ -132,6 +158,16 @@ export function updateDraftTripMeta(
       | "children"
       | "starting_location"
       | "destination"
+      | "starting_location_place_id"
+      | "starting_location_lat"
+      | "starting_location_lng"
+      | "starting_location_country"
+      | "starting_location_admin_area"
+      | "destination_place_id"
+      | "destination_lat"
+      | "destination_lng"
+      | "destination_country"
+      | "destination_admin_area"
     >
   >,
 ): StoredDraft | null {
@@ -185,6 +221,16 @@ export function draftToImportPayload(bundle: StoredDraft) {
     children: bundle.trip.children,
     starting_location: bundle.trip.starting_location,
     destination: bundle.trip.destination,
+    starting_location_place_id: bundle.trip.starting_location_place_id,
+    starting_location_lat: bundle.trip.starting_location_lat,
+    starting_location_lng: bundle.trip.starting_location_lng,
+    starting_location_country: bundle.trip.starting_location_country,
+    starting_location_admin_area: bundle.trip.starting_location_admin_area,
+    destination_place_id: bundle.trip.destination_place_id,
+    destination_lat: bundle.trip.destination_lat,
+    destination_lng: bundle.trip.destination_lng,
+    destination_country: bundle.trip.destination_country,
+    destination_admin_area: bundle.trip.destination_admin_area,
     days: bundle.days.map((d) => ({
       id: d.id,
       day_number: d.day_number,

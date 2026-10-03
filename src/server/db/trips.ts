@@ -19,9 +19,51 @@ export type TripRow = {
   children: number;
   starting_location: string | null;
   destination: string | null;
+  starting_location_place_id: string | null;
+  starting_location_lat: number | null;
+  starting_location_lng: number | null;
+  starting_location_country: string | null;
+  starting_location_admin_area: string | null;
+  destination_place_id: string | null;
+  destination_lat: number | null;
+  destination_lng: number | null;
+  destination_country: string | null;
+  destination_admin_area: string | null;
   created_at: string;
   updated_at: string;
 };
+
+type TripLocationInput = {
+  starting_location?: string | null;
+  destination?: string | null;
+  starting_location_place_id?: string | null;
+  starting_location_lat?: number | null;
+  starting_location_lng?: number | null;
+  starting_location_country?: string | null;
+  starting_location_admin_area?: string | null;
+  destination_place_id?: string | null;
+  destination_lat?: number | null;
+  destination_lng?: number | null;
+  destination_country?: string | null;
+  destination_admin_area?: string | null;
+};
+
+function tripLocationInsertBinds(input: TripLocationInput) {
+  return [
+    input.starting_location ?? null,
+    input.destination ?? null,
+    input.starting_location_place_id ?? null,
+    input.starting_location_lat ?? null,
+    input.starting_location_lng ?? null,
+    input.starting_location_country ?? null,
+    input.starting_location_admin_area ?? null,
+    input.destination_place_id ?? null,
+    input.destination_lat ?? null,
+    input.destination_lng ?? null,
+    input.destination_country ?? null,
+    input.destination_admin_area ?? null,
+  ];
+}
 
 type ImportPayload = z.infer<typeof importTripSchema>;
 
@@ -99,9 +141,7 @@ export async function createTrip(
     end_date: string;
     adults: number;
     children: number;
-    starting_location?: string | null;
-    destination?: string | null;
-  },
+  } & TripLocationInput,
 ): Promise<{ trip: Trip; created: boolean }> {
   const id = input.id ?? crypto.randomUUID();
   const existing = await getTripForUser(db, id, input.userId);
@@ -133,8 +173,13 @@ export async function createTrip(
       .prepare(
         `INSERT INTO trips (
         id, user_id, name, start_date, end_date, adults, children,
-        starting_location, destination, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        starting_location, destination,
+        starting_location_place_id, starting_location_lat, starting_location_lng,
+        starting_location_country, starting_location_admin_area,
+        destination_place_id, destination_lat, destination_lng,
+        destination_country, destination_admin_area,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         id,
@@ -144,8 +189,7 @@ export async function createTrip(
         input.end_date,
         input.adults,
         input.children,
-        input.starting_location ?? null,
-        input.destination ?? null,
+        ...tripLocationInsertBinds(input),
         ts,
         ts,
       ),
@@ -185,9 +229,7 @@ export async function updateTripForUser(
     end_date?: string;
     adults?: number;
     children?: number;
-    starting_location?: string | null;
-    destination?: string | null;
-  },
+  } & Partial<TripLocationInput>,
 ): Promise<Trip | null> {
   const existing = await getTripForUser(db, tripId, userId);
   if (!existing) return null;
@@ -206,12 +248,57 @@ export async function updateTripForUser(
     fields.destination !== undefined
       ? fields.destination
       : existing.destination;
+  const starting_location_place_id =
+    fields.starting_location_place_id !== undefined
+      ? fields.starting_location_place_id
+      : existing.starting_location_place_id;
+  const starting_location_lat =
+    fields.starting_location_lat !== undefined
+      ? fields.starting_location_lat
+      : existing.starting_location_lat;
+  const starting_location_lng =
+    fields.starting_location_lng !== undefined
+      ? fields.starting_location_lng
+      : existing.starting_location_lng;
+  const starting_location_country =
+    fields.starting_location_country !== undefined
+      ? fields.starting_location_country
+      : existing.starting_location_country;
+  const starting_location_admin_area =
+    fields.starting_location_admin_area !== undefined
+      ? fields.starting_location_admin_area
+      : existing.starting_location_admin_area;
+  const destination_place_id =
+    fields.destination_place_id !== undefined
+      ? fields.destination_place_id
+      : existing.destination_place_id;
+  const destination_lat =
+    fields.destination_lat !== undefined
+      ? fields.destination_lat
+      : existing.destination_lat;
+  const destination_lng =
+    fields.destination_lng !== undefined
+      ? fields.destination_lng
+      : existing.destination_lng;
+  const destination_country =
+    fields.destination_country !== undefined
+      ? fields.destination_country
+      : existing.destination_country;
+  const destination_admin_area =
+    fields.destination_admin_area !== undefined
+      ? fields.destination_admin_area
+      : existing.destination_admin_area;
 
   await db
     .prepare(
       `UPDATE trips SET
         name = ?, start_date = ?, end_date = ?, adults = ?, children = ?,
-        starting_location = ?, destination = ?, updated_at = ?
+        starting_location = ?, destination = ?,
+        starting_location_place_id = ?, starting_location_lat = ?, starting_location_lng = ?,
+        starting_location_country = ?, starting_location_admin_area = ?,
+        destination_place_id = ?, destination_lat = ?, destination_lng = ?,
+        destination_country = ?, destination_admin_area = ?,
+        updated_at = ?
        WHERE id = ? AND user_id = ?`,
     )
     .bind(
@@ -222,6 +309,16 @@ export async function updateTripForUser(
       children,
       starting_location,
       destination,
+      starting_location_place_id,
+      starting_location_lat,
+      starting_location_lng,
+      starting_location_country,
+      starting_location_admin_area,
+      destination_place_id,
+      destination_lat,
+      destination_lng,
+      destination_country,
+      destination_admin_area,
       ts,
       tripId,
       userId,
@@ -249,8 +346,13 @@ export async function importTripForUser(
       .prepare(
         `INSERT INTO trips (
         id, user_id, name, start_date, end_date, adults, children,
-        starting_location, destination, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        starting_location, destination,
+        starting_location_place_id, starting_location_lat, starting_location_lng,
+        starting_location_country, starting_location_admin_area,
+        destination_place_id, destination_lat, destination_lng,
+        destination_country, destination_admin_area,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         id,
@@ -260,8 +362,7 @@ export async function importTripForUser(
         payload.end_date,
         payload.adults,
         payload.children,
-        payload.starting_location ?? null,
-        payload.destination ?? null,
+        ...tripLocationInsertBinds(payload),
         ts,
         ts,
       ),

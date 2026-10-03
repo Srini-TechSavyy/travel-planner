@@ -8,6 +8,10 @@ import {
   getDraftTrip,
   updateDraftTripMeta,
 } from "../lib/draft-trips";
+import {
+  tripFormValuesFromTrip,
+  tripLocationFieldsFromForm,
+} from "../lib/trip-form-location";
 import type { Trip } from "../../shared/types";
 
 export function CreateTripPage() {
@@ -30,8 +34,7 @@ export function CreateTripPage() {
         end_date: values.end_date,
         adults: values.adults,
         children: values.children,
-        starting_location: values.starting_location.trim() || null,
-        destination: values.destination.trim() || null,
+        ...tripLocationFieldsFromForm(values),
       });
       navigate(`/trips/${editingDraft.trip.id}`);
       return;
@@ -44,8 +47,7 @@ export function CreateTripPage() {
         end_date: values.end_date,
         adults: values.adults,
         children: values.children,
-        starting_location: values.starting_location,
-        destination: values.destination,
+        ...tripLocationFieldsFromForm(values),
       });
       navigate(`/trips/${bundle.trip.id}`);
       return;
@@ -61,8 +63,7 @@ export function CreateTripPage() {
           end_date: values.end_date,
           adults: values.adults,
           children: values.children,
-          starting_location: values.starting_location.trim() || null,
-          destination: values.destination.trim() || null,
+          ...tripLocationFieldsFromForm(values),
         }),
       });
       navigate(`/trips/${data.trip.id}`);
@@ -78,8 +79,7 @@ export function CreateTripPage() {
         end_date: editingDraft.trip.end_date,
         adults: editingDraft.trip.adults,
         children: editingDraft.trip.children,
-        starting_location: editingDraft.trip.starting_location ?? "",
-        destination: editingDraft.trip.destination ?? "",
+        ...tripFormValuesFromTrip(editingDraft.trip),
       }
     : undefined;
 

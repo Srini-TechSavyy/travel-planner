@@ -57,6 +57,16 @@ npm run db:migrate:remote
    - Production: `https://tripmate.techsavyy.com/auth/google/callback` (or your custom domain + `/auth/google/callback`)
 4. Copy **Client ID** and **Client secret**.
 
+## 3b. Google Places (location autocomplete)
+
+Used on **Create / Edit Trip** for starting location and destination suggestions.
+
+1. In Google Cloud Console, enable **Places API (New)** for the same project (or a dedicated project).
+2. Create an **API key** restricted for browser use:
+   - **Application restrictions:** HTTP referrers (e.g. `http://localhost:5173/*`, your production origin `https://tripmate.techsavyy.com/*`).
+   - **API restrictions:** Places API (New) only.
+3. Add `VITE_GOOGLE_PLACES_API_KEY` to `.dev.vars` (local) or your build environment (production). Do not commit the key.
+
 ## 4. Environment variables / secrets
 
 | Variable | Description |
@@ -65,8 +75,9 @@ npm run db:migrate:remote
 | `GOOGLE_CLIENT_SECRET` | OAuth client secret (server only) |
 | `SESSION_SECRET` | Random string, 32+ characters (signs session cookies) |
 | `APP_URL` | Public app origin, no trailing slash (e.g. `http://localhost:5173`) |
+| `VITE_GOOGLE_PLACES_API_KEY` | Browser key for Google Places API (New) autocomplete (HTTP referrer–restricted) |
 
-**Local:** copy [`.env.example`](.env.example) to `.dev.vars` in the project root (gitignored).
+**Local:** copy [`.env.example`](.env.example) to `.dev.vars` in the project root (gitignored). Include `VITE_GOOGLE_PLACES_API_KEY` there; Vite reads `VITE_*` values from `.dev.vars` during `npm run dev` and `npm run build`.
 
 **Production:**
 
@@ -106,6 +117,8 @@ npm run db:migrate:remote
 ```
 
 Configure the same secrets and `APP_URL` for your production URL before testing OAuth in production.
+
+For production autocomplete, set `VITE_GOOGLE_PLACES_API_KEY` in the environment when running `npm run build` (Vite inlines `VITE_*` variables at build time).
 
 **Production:** `https://tripmate.techsavyy.com` — set `APP_URL` to this origin (no trailing slash). Google redirect URI: `https://tripmate.techsavyy.com/auth/google/callback`.
 

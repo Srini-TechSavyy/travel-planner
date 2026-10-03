@@ -114,11 +114,51 @@ tripRoutes.patch("/:tripId", async (c) => {
     ...parsed.data,
     starting_location:
       parsed.data.starting_location !== undefined
-        ? parsed.data.starting_location ?? null
+        ? (parsed.data.starting_location ?? null)
         : undefined,
     destination:
       parsed.data.destination !== undefined
-        ? parsed.data.destination ?? null
+        ? (parsed.data.destination ?? null)
+        : undefined,
+    starting_location_place_id:
+      parsed.data.starting_location_place_id !== undefined
+        ? (parsed.data.starting_location_place_id ?? null)
+        : undefined,
+    starting_location_lat:
+      parsed.data.starting_location_lat !== undefined
+        ? (parsed.data.starting_location_lat ?? null)
+        : undefined,
+    starting_location_lng:
+      parsed.data.starting_location_lng !== undefined
+        ? (parsed.data.starting_location_lng ?? null)
+        : undefined,
+    starting_location_country:
+      parsed.data.starting_location_country !== undefined
+        ? (parsed.data.starting_location_country ?? null)
+        : undefined,
+    starting_location_admin_area:
+      parsed.data.starting_location_admin_area !== undefined
+        ? (parsed.data.starting_location_admin_area ?? null)
+        : undefined,
+    destination_place_id:
+      parsed.data.destination_place_id !== undefined
+        ? (parsed.data.destination_place_id ?? null)
+        : undefined,
+    destination_lat:
+      parsed.data.destination_lat !== undefined
+        ? (parsed.data.destination_lat ?? null)
+        : undefined,
+    destination_lng:
+      parsed.data.destination_lng !== undefined
+        ? (parsed.data.destination_lng ?? null)
+        : undefined,
+    destination_country:
+      parsed.data.destination_country !== undefined
+        ? (parsed.data.destination_country ?? null)
+        : undefined,
+    destination_admin_area:
+      parsed.data.destination_admin_area !== undefined
+        ? (parsed.data.destination_admin_area ?? null)
         : undefined,
   });
   if (!trip) {
