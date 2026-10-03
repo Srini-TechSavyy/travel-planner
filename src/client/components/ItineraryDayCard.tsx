@@ -1,16 +1,17 @@
 import type { ReactNode } from "react";
 import type { DayListItem, ItineraryDay } from "../../shared/types";
 import { dayCategories, dayTotal, hasDayBudget } from "../lib/budget";
-import { formatDayHeading, formatInr } from "../lib/format";
+import { formatDayOfWeek, formatInr, formatShortDate } from "../lib/format";
 
 const LIST_PREVIEW = 2;
 
 type Props = {
   day: ItineraryDay;
-  onEdit: () => void;
+  onEditDay: () => void;
+  onBudget: () => void;
 };
 
-export function ItineraryDayCard({ day, onEdit }: Props) {
+export function ItineraryDayCard({ day, onEditDay, onBudget }: Props) {
   const from = day.from_location?.trim() ?? "";
   const to = day.to_location?.trim() ?? "";
   const hasFrom = from.length > 0;
@@ -51,16 +52,27 @@ export function ItineraryDayCard({ day, onEdit }: Props) {
   return (
     <article className="card p-4 sm:p-5">
       <header className="flex items-start justify-between gap-3">
-        <h3 className="min-w-0 text-sm font-bold tracking-wide text-slate-900">
-          {formatDayHeading(day.day_number, day.date)}
-        </h3>
-        <button
-          type="button"
-          onClick={onEdit}
-          className="btn-secondary shrink-0"
-        >
-          Edit Day
-        </button>
+        <div className="min-w-0">
+          <h3 className="text-sm font-bold tracking-wide text-slate-900">
+            Day {day.day_number}
+          </h3>
+          <p className="mt-0.5 text-sm leading-snug">
+            <span className="font-semibold text-teal-800">
+              {formatDayOfWeek(day.date)}
+            </span>
+            <span className="font-medium text-slate-600">
+              , {formatShortDate(day.date)}
+            </span>
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap justify-end gap-2">
+          <button type="button" onClick={onEditDay} className="btn-secondary">
+            Edit Day
+          </button>
+          <button type="button" onClick={onBudget} className="btn-secondary">
+            Budget
+          </button>
+        </div>
       </header>
 
       {hasItinerary && (
@@ -157,7 +169,7 @@ export function ItineraryDayCard({ day, onEdit }: Props) {
         <div className={hasItinerary ? "mt-3" : "mt-2"}>
           <button
             type="button"
-            onClick={onEdit}
+            onClick={onBudget}
             className="text-sm font-medium text-teal-700 hover:underline"
           >
             Add Budget

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { apiFetch } from "../api/client";
-import { ItineraryDayForm } from "../components/ItineraryDayForm";
+import { DayBudgetModal } from "../components/DayBudgetModal";
+import { EditDayModal } from "../components/EditDayModal";
 import { ItineraryDayCard } from "../components/ItineraryDayCard";
 import { ItineraryDaySummaryRow } from "../components/ItineraryDaySummary";
 import { BudgetSummary } from "../components/BudgetSummary";
@@ -28,6 +29,12 @@ import {
   stashPendingImport,
 } from "../lib/pending-import";
 import type { ItineraryDay } from "../../shared/types";
+import {
+  mergeDayFormValues,
+  toDayFormValues,
+  type DayBudgetFormValues,
+  type DayItineraryFormValues,
+} from "../lib/dayForm";
 
 const draftImportLocks = new Set<string>();
 
@@ -38,6 +45,7 @@ export function TripItineraryPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const bundle = useTripBundle(tripId);
   const [editingDay, setEditingDay] = useState<ItineraryDay | null>(null);
+  const [budgetDay, setBudgetDay] = useState<ItineraryDay | null>(null);
   const [adding, setAdding] = useState(false);
   const [savingTrip, setSavingTrip] = useState(false);
   const [tripSaveDone, setTripSaveDone] = useState(false);
@@ -126,9 +134,20 @@ export function TripItineraryPage() {
     }
   }
 
-  async function handleSaveDay(values: Parameters<typeof bundle.saveDay>[1]) {
+  async function handleSaveItinerary(values: DayItineraryFormValues) {
     if (!editingDay) return;
-    await bundle.saveDay(editingDay.id, values);
+    await bundle.saveDay(
+      editingDay.id,
+      mergeDayFormValues(toDayFormValues(editingDay), values),
+    );
+  }
+
+  async function handleSaveBudget(values: DayBudgetFormValues) {
+    if (!budgetDay) return;
+    await bundle.saveDay(
+      budgetDay.id,
+      mergeDayFormValues(toDayFormValues(budgetDay), values),
+    );
   }
 
   async function handleAddDay() {
@@ -245,7 +264,8 @@ export function TripItineraryPage() {
           <ItineraryDayCard
             key={day.id}
             day={day}
-            onEdit={() => setEditingDay(day)}
+            onEditDay={() => setEditingDay(day)}
+            onBudget={() => setBudgetDay(day)}
           />
         ))}
       </div>
@@ -260,11 +280,20 @@ export function TripItineraryPage() {
       </button>
 
       {editingDay && (
-        <ItineraryDayForm
+        <EditDayModal
           day={editingDay}
           open={!!editingDay}
           onClose={() => setEditingDay(null)}
-          onSave={handleSaveDay}
+          onSave={handleSaveItinerary}
+        />
+      )}
+
+      {budgetDay && (
+        <DayBudgetModal
+          day={budgetDay}
+          open={!!budgetDay}
+          onClose={() => setBudgetDay(null)}
+          onSave={handleSaveBudget}
         />
       )}
 

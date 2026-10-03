@@ -32,6 +32,12 @@ export function formatDayHeading(dayNumber: number, date: string): string {
   return `DAY ${dayNumber} · ${month} ${day}`;
 }
 
+export function formatDayOfWeek(date: string): string {
+  return new Date(`${date}T12:00:00`).toLocaleDateString("en-US", {
+    weekday: "long",
+  });
+}
+
 export function tripDayCount(start: string, end: string): number {
   const s = new Date(`${start}T12:00:00`);
   const e = new Date(`${end}T12:00:00`);

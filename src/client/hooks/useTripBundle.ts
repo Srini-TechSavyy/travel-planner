@@ -9,7 +9,7 @@ import {
 } from "../lib/draft-trips";
 import { addOneDay } from "../lib/dates";
 import type { ItineraryDay, Trip } from "../../shared/types";
-import type { DayFormValues } from "../components/ItineraryDayForm";
+import { formToDayPatch, type DayFormValues } from "../lib/dayForm";
 
 export type TripBundle = {
   source: "draft" | "api";
@@ -22,35 +22,6 @@ export type TripBundle = {
   addDay: () => Promise<void>;
   updateTripLocal: (trip: Trip) => void;
 };
-
-function formToDayPatch(values: DayFormValues) {
-  return {
-    date: values.date,
-    from_location: values.from_location.trim() || null,
-    to_location: values.to_location.trim() || null,
-    distance_km: values.distance_km ? Number(values.distance_km) : null,
-    drive_time: values.drive_time.trim() || null,
-    stay_name: values.stay_name.trim() || null,
-    stay_location: values.stay_location.trim() || null,
-    notes: values.notes.trim() || null,
-    travel_budget: parseBudget(values.travel_budget),
-    stay_budget: parseBudget(values.stay_budget),
-    restaurant_budget: parseBudget(values.restaurant_budget),
-    activities_budget: parseBudget(values.activities_budget),
-    other_budget: parseBudget(values.other_budget),
-    sightseeing: values.sightseeing,
-    restaurants: values.restaurants,
-    foods: values.foods,
-  };
-}
-
-function parseBudget(v: string): number | null {
-  const t = v.trim();
-  if (!t) return null;
-  const n = Number(t);
-  if (!Number.isFinite(n) || n < 0) return null;
-  return Math.round(n);
-}
 
 export function useTripBundle(tripId: string | undefined): TripBundle {
   const [trip, setTrip] = useState<Trip | null>(null);
