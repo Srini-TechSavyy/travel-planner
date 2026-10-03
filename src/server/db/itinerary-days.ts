@@ -60,25 +60,34 @@ export async function listDaysForTrip(
   return rows.map((row) => attachLists(row, lists));
 }
 
+const INSERT_ITINERARY_DAY_SQL = `INSERT INTO itinerary_days (
+  id, trip_id, day_number, date,
+  from_location, to_location, distance_km, drive_time, stay_name, stay_location, notes,
+  travel_budget, stay_budget, restaurant_budget, activities_budget, other_budget,
+  created_at, updated_at
+) VALUES (?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?, ?)`;
+
+export function buildItineraryDayInsertStatements(
+  db: D1Database,
+  tripId: string,
+  days: { day_number: number; date: string }[],
+  ts: string,
+): D1PreparedStatement[] {
+  return days.map((day) =>
+    db
+      .prepare(INSERT_ITINERARY_DAY_SQL)
+      .bind(crypto.randomUUID(), tripId, day.day_number, day.date, ts, ts),
+  );
+}
+
 export async function insertItineraryDays(
   db: D1Database,
   tripId: string,
   days: { day_number: number; date: string }[],
 ): Promise<void> {
+  if (days.length === 0) return;
   const ts = nowIso();
-  for (const day of days) {
-    await db
-      .prepare(
-        `INSERT INTO itinerary_days (
-          id, trip_id, day_number, date,
-          from_location, to_location, distance_km, drive_time, stay_name, stay_location, notes,
-          travel_budget, stay_budget, restaurant_budget, activities_budget, other_budget,
-          created_at, updated_at
-        ) VALUES (?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ?, ?)`,
-      )
-      .bind(crypto.randomUUID(), tripId, day.day_number, day.date, ts, ts)
-      .run();
-  }
+  await db.batch(buildItineraryDayInsertStatements(db, tripId, days, ts));
 }
 
 export async function insertItineraryDayFull(

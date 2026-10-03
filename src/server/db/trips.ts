@@ -1,5 +1,6 @@
 import { nowIso } from "./client";
 import {
+  buildItineraryDayInsertStatements,
   insertItineraryDays,
   listDaysForTrip,
 } from "./itinerary-days";
@@ -81,6 +82,13 @@ export async function getTripForUser(
   return row ? rowToTrip(row) : null;
 }
 
+function daySpecsFromRange(startDate: string, endDate: string) {
+  return datesInclusive(startDate, endDate).map((date, index) => ({
+    day_number: index + 1,
+    date,
+  }));
+}
+
 export async function createTrip(
   db: D1Database,
   input: {
@@ -97,11 +105,31 @@ export async function createTrip(
 ): Promise<{ trip: Trip; created: boolean }> {
   const id = input.id ?? crypto.randomUUID();
   const existing = await getTripForUser(db, id, input.userId);
-  if (existing) return { trip: existing, created: false };
+  if (existing) {
+    const existingDays = await listDaysForTrip(db, id);
+    if (existingDays.length > 0) {
+      return { trip: existing, created: false };
+    }
+    const specs = daySpecsFromRange(existing.start_date, existing.end_date);
+    try {
+      await insertItineraryDays(db, id, specs);
+    } catch (err) {
+      console.error("createTrip: failed to backfill itinerary days", {
+        tripId: id,
+        userId: input.userId,
+        err,
+      });
+      throw err;
+    }
+    const trip = await getTripForUser(db, id, input.userId);
+    if (!trip) throw new Error("Failed to create trip");
+    return { trip, created: false };
+  }
 
   const ts = nowIso();
-  try {
-    await db
+  const specs = daySpecsFromRange(input.start_date, input.end_date);
+  const statements: D1PreparedStatement[] = [
+    db
       .prepare(
         `INSERT INTO trips (
         id, user_id, name, start_date, end_date, adults, children,
@@ -120,23 +148,27 @@ export async function createTrip(
         input.destination ?? null,
         ts,
         ts,
-      )
-      .run();
-  } catch {
-    const again = await getTripForUser(db, id, input.userId);
-    if (again) return { trip: again, created: false };
-    throw new Error("Failed to create trip");
-  }
+      ),
+    ...buildItineraryDayInsertStatements(db, id, specs, ts),
+  ];
 
-  const dayDates = datesInclusive(input.start_date, input.end_date);
-  await insertItineraryDays(
-    db,
-    id,
-    dayDates.map((date, index) => ({
-      day_number: index + 1,
-      date,
-    })),
-  );
+  try {
+    await db.batch(statements);
+  } catch (err) {
+    console.error("createTrip: D1 batch failed", {
+      tripId: id,
+      userId: input.userId,
+      dayCount: specs.length,
+      err,
+    });
+    const again = await getTripForUser(db, id, input.userId);
+    if (again) {
+      const days = await listDaysForTrip(db, id);
+      if (days.length > 0) return { trip: again, created: false };
+      await deleteTripForUser(db, id, input.userId);
+    }
+    throw err;
+  }
 
   const trip = await getTripForUser(db, id, input.userId);
   if (!trip) throw new Error("Failed to create trip");

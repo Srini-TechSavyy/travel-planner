@@ -76,7 +76,12 @@ tripRoutes.post("/", async (c) => {
       destination: parsed.data.destination ?? null,
     });
     return c.json({ trip }, created ? 201 : 200);
-  } catch {
+  } catch (err) {
+    console.error("POST /api/trips failed", {
+      userId: user.id,
+      tripId: parsed.data.id,
+      err,
+    });
     return c.json({ error: "Unable to create trip" }, 500);
   }
 });
