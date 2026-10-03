@@ -4,6 +4,7 @@ type Props = {
   open: boolean;
   title: string;
   titleId: string;
+  subtitle?: ReactNode;
   children: ReactNode;
   maxWidthClass?: string;
 };
@@ -12,6 +13,7 @@ export function DayModalShell({
   open,
   title,
   titleId,
+  subtitle,
   children,
   maxWidthClass = "max-w-4xl",
 }: Props) {
@@ -25,12 +27,15 @@ export function DayModalShell({
       aria-labelledby={titleId}
     >
       <div
-        className={`max-h-[90vh] w-full ${maxWidthClass} overflow-y-auto rounded-2xl bg-white p-6 shadow-xl`}
+        className={`flex max-h-[min(90vh,44rem)] w-full flex-col overflow-hidden rounded-2xl bg-white shadow-xl ${maxWidthClass}`}
       >
-        <h2 id={titleId} className="text-lg font-semibold text-slate-900">
-          {title}
-        </h2>
-        {children}
+        <header className="shrink-0 border-b border-slate-100 px-5 py-4">
+          <h2 id={titleId} className="text-lg font-semibold text-slate-900">
+            {title}
+          </h2>
+          {subtitle ? <div className="mt-0.5">{subtitle}</div> : null}
+        </header>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
       </div>
     </div>
   );
@@ -40,15 +45,23 @@ type FormActionsProps = {
   saving: boolean;
   saveLabel: string;
   onCancel: () => void;
+  sticky?: boolean;
 };
 
 export function DayModalFormActions({
   saving,
   saveLabel,
   onCancel,
+  sticky = false,
 }: FormActionsProps) {
   return (
-    <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+    <div
+      className={
+        sticky
+          ? "sticky bottom-0 -mx-5 flex flex-wrap gap-2 border-t border-slate-200 bg-white/95 px-5 py-3 backdrop-blur-sm"
+          : "flex flex-wrap gap-2 border-t border-slate-100 pt-4"
+      }
+    >
       <button type="submit" disabled={saving} className="btn-primary">
         {saving ? "Saving…" : saveLabel}
       </button>

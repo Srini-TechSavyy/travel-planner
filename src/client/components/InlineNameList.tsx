@@ -7,6 +7,7 @@ type Props = {
   items: DayListItem[];
   onChange: (items: DayListItem[]) => void;
   addLabel: string;
+  compact?: boolean;
 };
 
 export function InlineNameList({
@@ -15,6 +16,7 @@ export function InlineNameList({
   items,
   onChange,
   addLabel,
+  compact = false,
 }: Props) {
   const [draft, setDraft] = useState("");
 
@@ -50,24 +52,39 @@ export function InlineNameList({
     );
   }
 
+  const inputClass = compact ? "input min-w-0 flex-1 py-1.5 text-sm" : "input min-w-0 flex-1";
+  const addButtonClass = compact
+    ? "shrink-0 rounded-lg bg-teal-50 px-2.5 py-1.5 text-sm font-medium text-teal-700 hover:bg-teal-100"
+    : "shrink-0 rounded-lg bg-teal-50 px-3 py-2 text-sm font-medium text-teal-700 hover:bg-teal-100";
+
   return (
     <div>
-      <p className="mb-2 text-sm font-medium text-slate-700">
+      <p
+        className={
+          compact
+            ? "mb-1.5 text-sm font-medium text-slate-700"
+            : "mb-2 text-sm font-medium text-slate-700"
+        }
+      >
         {icon ? `${icon} ` : ""}
         {label}
       </p>
-      <ul className="space-y-2">
+      <ul className={compact ? "space-y-1.5" : "space-y-2"}>
         {items.map((item) => (
           <li key={item.id} className="flex min-w-0 items-center gap-2">
             <input
               value={item.name}
               onChange={(e) => updateItem(item.id, e.target.value)}
-              className="input min-w-0 flex-1"
+              className={inputClass}
             />
             <button
               type="button"
               onClick={() => removeItem(item.id)}
-              className="shrink-0 rounded-lg px-2 py-2 text-sm text-red-600 hover:bg-red-50"
+              className={
+                compact
+                  ? "shrink-0 rounded-lg px-2 py-1.5 text-sm text-red-600 hover:bg-red-50"
+                  : "shrink-0 rounded-lg px-2 py-2 text-sm text-red-600 hover:bg-red-50"
+              }
               aria-label="Remove"
             >
               ✕
@@ -79,13 +96,13 @@ export function InlineNameList({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={onKeyDown}
-            className="input min-w-0 flex-1"
+            className={inputClass}
             placeholder={addLabel}
           />
           <button
             type="button"
             onClick={commitAdd}
-            className="shrink-0 rounded-lg bg-teal-50 px-3 py-2 text-sm font-medium text-teal-700 hover:bg-teal-100"
+            className={addButtonClass}
           >
             +
           </button>

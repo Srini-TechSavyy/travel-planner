@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { DayListItem, ItineraryDay } from "../../shared/types";
-import { dayCategories, dayTotal, hasDayBudget } from "../lib/budget";
+import { dayTotal, hasDayBudget } from "../lib/budget";
 import { formatDayOfWeek, formatInr, formatShortDate } from "../lib/format";
 
 const LIST_PREVIEW = 2;
@@ -28,18 +28,6 @@ export function ItineraryDayCard({ day, onEditDay, onBudget }: Props) {
   ]
     .filter(Boolean)
     .join(" · ");
-
-  const budgetRows = hasDayBudget(day)
-    ? (
-        [
-          ["Travel", dayCategories(day).travel],
-          ["Stay", dayCategories(day).stay],
-          ["Restaurants", dayCategories(day).restaurants],
-          ["Activities", dayCategories(day).activities],
-          ["Other", dayCategories(day).other],
-        ] as const
-      ).filter(([, v]) => v > 0)
-    : [];
 
   const hasItinerary =
     hasTravel ||
@@ -139,7 +127,7 @@ export function ItineraryDayCard({ day, onEditDay, onBudget }: Props) {
         </div>
       )}
 
-      {hasDayBudget(day) ? (
+      {hasDayBudget(day) && (
         <div
           className={
             hasItinerary
@@ -148,32 +136,9 @@ export function ItineraryDayCard({ day, onEditDay, onBudget }: Props) {
           }
         >
           <p className="text-sm font-medium text-slate-600">💰 Budget</p>
-          <dl className="mt-2 space-y-0.5 text-sm">
-            {budgetRows.map(([label, value]) => (
-              <div key={label} className="flex justify-between gap-4">
-                <dt className="text-slate-600">{label}</dt>
-                <dd className="font-medium tabular-nums text-slate-800">
-                  {formatInr(value)}
-                </dd>
-              </div>
-            ))}
-            <div className="flex justify-between gap-4 border-t border-slate-100 pt-2 font-semibold">
-              <dt className="text-slate-800">Day Total</dt>
-              <dd className="tabular-nums text-teal-700">
-                {formatInr(dayTotal(day))}
-              </dd>
-            </div>
-          </dl>
-        </div>
-      ) : (
-        <div className={hasItinerary ? "mt-3" : "mt-2"}>
-          <button
-            type="button"
-            onClick={onBudget}
-            className="text-sm font-medium text-teal-700 hover:underline"
-          >
-            Add Budget
-          </button>
+          <p className="mt-0.5 text-sm font-semibold tabular-nums text-slate-900">
+            {formatInr(dayTotal(day))}
+          </p>
         </div>
       )}
     </article>

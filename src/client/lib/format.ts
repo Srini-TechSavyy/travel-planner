@@ -38,6 +38,16 @@ export function formatDayOfWeek(date: string): string {
   });
 }
 
+/** e.g. Saturday, Nov 7, 2026 — used in Edit Day modal header */
+export function formatEditDayHeaderDate(date: string): string {
+  return new Date(`${date}T12:00:00`).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 export function tripDayCount(start: string, end: string): number {
   const s = new Date(`${start}T12:00:00`);
   const e = new Date(`${end}T12:00:00`);

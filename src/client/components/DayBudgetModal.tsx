@@ -54,7 +54,7 @@ export function DayBudgetModal({ day, open, onClose, onSave }: Props) {
       titleId="day-budget-title"
       maxWidthClass="max-w-lg"
     >
-      <form onSubmit={handleSubmit} className="mt-5 space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-5">
         {error && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
             {error}
