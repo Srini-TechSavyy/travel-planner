@@ -5,8 +5,10 @@ import {
   type DayItineraryFormValues,
 } from "../lib/dayForm";
 import { formatEditDayHeaderDate } from "../lib/format";
+import { tripLocationMetaFromPlace } from "../lib/trip-form-location";
 import { DayModalFormActions, DayModalShell } from "./DayModalShell";
 import { InlineNameList } from "./InlineNameList";
+import { LocationAutocompleteInput } from "./LocationAutocompleteInput";
 
 const fieldInputClass = "input py-1.5 text-sm";
 
@@ -174,12 +176,25 @@ export function EditDayModal({ day, open, onClose, onSave }: Props) {
               />
             </Field>
             <Field label="Location">
-              <input
+              <LocationAutocompleteInput
                 value={values.stay_location}
-                onChange={(e) =>
-                  setValues((v) => ({ ...v, stay_location: e.target.value }))
+                placeholder="City or area"
+                selectedDisplayName={
+                  values.stay_location_meta ? values.stay_location : null
                 }
-                className={fieldInputClass}
+                onValueChange={(next) =>
+                  setValues((v) => ({ ...v, stay_location: next }))
+                }
+                onPlaceSelected={(place) =>
+                  setValues((v) => ({
+                    ...v,
+                    stay_location: place.display_name,
+                    stay_location_meta: tripLocationMetaFromPlace(place),
+                  }))
+                }
+                onPlaceCleared={() =>
+                  setValues((v) => ({ ...v, stay_location_meta: null }))
+                }
               />
             </Field>
           </div>

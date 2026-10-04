@@ -7,6 +7,7 @@ const dateString = z
 const locationString = z.string().trim().max(500).nullable().optional();
 
 const placeIdString = z.string().trim().min(1).max(500).nullable().optional();
+const photoNameString = z.string().trim().min(1).max(1000).nullable().optional();
 const latitude = z.number().min(-90).max(90).nullable().optional();
 const longitude = z.number().min(-180).max(180).nullable().optional();
 const regionString = z.string().trim().max(200).nullable().optional();
@@ -19,11 +20,22 @@ const tripLocationFields = {
   starting_location_lng: longitude,
   starting_location_country: regionString,
   starting_location_admin_area: regionString,
+  starting_location_photo_name: photoNameString,
   destination_place_id: placeIdString,
   destination_lat: latitude,
   destination_lng: longitude,
   destination_country: regionString,
   destination_admin_area: regionString,
+  destination_photo_name: photoNameString,
+};
+
+const dayStayLocationFields = {
+  stay_location_place_id: placeIdString,
+  stay_location_lat: latitude,
+  stay_location_lng: longitude,
+  stay_location_country: regionString,
+  stay_location_admin_area: regionString,
+  stay_location_photo_name: photoNameString,
 };
 
 const budgetField = z.number().int().min(0).max(100_000_000).nullable().optional();
@@ -74,6 +86,7 @@ export const updateDaySchema = z.object({
   drive_time: z.string().trim().max(100).nullable().optional(),
   stay_name: z.string().trim().max(500).nullable().optional(),
   stay_location: z.string().trim().max(500).nullable().optional(),
+  ...dayStayLocationFields,
   notes: z.string().trim().max(2000).nullable().optional(),
   travel_budget: budgetField,
   stay_budget: budgetField,
@@ -99,6 +112,7 @@ const importDaySchema = z.object({
   drive_time: z.string().trim().max(100).nullable().optional(),
   stay_name: z.string().trim().max(500).nullable().optional(),
   stay_location: z.string().trim().max(500).nullable().optional(),
+  ...dayStayLocationFields,
   notes: z.string().trim().max(2000).nullable().optional(),
   travel_budget: budgetField,
   stay_budget: budgetField,

@@ -35,10 +35,7 @@ export function TripCard({ trip, isDraft, onDelete, deleting }: Props) {
 
   return (
     <article className="card flex flex-col overflow-hidden">
-      <TripCoverImage
-        trip={trip}
-        days={draftBundle?.days}
-      />
+      <TripCoverImage trip={trip} />
       <div className="flex flex-1 flex-col p-5">
         <div className="flex items-start justify-between gap-2">
           <h2 className="text-lg font-semibold text-slate-900">{trip.name}</h2>

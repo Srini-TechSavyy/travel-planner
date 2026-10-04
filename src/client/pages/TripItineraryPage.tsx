@@ -193,7 +193,7 @@ export function TripItineraryPage() {
       </Link>
 
       <div className="mt-4 overflow-hidden rounded-2xl">
-        <TripCoverImage trip={trip} days={days} className="h-48 sm:h-56" />
+        <TripCoverImage trip={trip} className="h-48 sm:h-56" />
       </div>
 
       <header className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { DayListItem, ItineraryDay } from "../../shared/types";
 import { dayTotal, hasDayBudget } from "../lib/budget";
 import { formatDayOfWeek, formatInr, formatShortDate } from "../lib/format";
+import { PlaceLocationImage } from "./PlaceLocationImage";
 
 const LIST_PREVIEW = 2;
 
@@ -38,7 +39,15 @@ export function ItineraryDayCard({ day, onEditDay, onBudget }: Props) {
     (day.notes && !hasTravel);
 
   return (
-    <article className="card p-4 sm:p-5">
+    <article className="card flex overflow-hidden">
+      <PlaceLocationImage
+        photo_name={day.stay_location_photo_name}
+        place_id={day.stay_location_place_id}
+        className="w-[4.25rem] shrink-0 self-stretch sm:w-24"
+        imgClassName="h-full min-h-[5.5rem] w-full object-cover sm:min-h-[6rem]"
+        maxWidthPx={400}
+      />
+      <div className="min-w-0 flex-1 p-4 sm:p-5">
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-sm font-bold tracking-wide text-slate-900">
@@ -141,6 +150,7 @@ export function ItineraryDayCard({ day, onEditDay, onBudget }: Props) {
           </p>
         </div>
       )}
+      </div>
     </article>
   );
 }

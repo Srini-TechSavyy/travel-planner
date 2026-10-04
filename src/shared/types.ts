@@ -20,11 +20,13 @@ export type Trip = {
   starting_location_lng: number | null;
   starting_location_country: string | null;
   starting_location_admin_area: string | null;
+  starting_location_photo_name: string | null;
   destination_place_id: string | null;
   destination_lat: number | null;
   destination_lng: number | null;
   destination_country: string | null;
   destination_admin_area: string | null;
+  destination_photo_name: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -50,6 +52,12 @@ export type ItineraryDay = {
   drive_time: string | null;
   stay_name: string | null;
   stay_location: string | null;
+  stay_location_place_id: string | null;
+  stay_location_lat: number | null;
+  stay_location_lng: number | null;
+  stay_location_country: string | null;
+  stay_location_admin_area: string | null;
+  stay_location_photo_name: string | null;
   notes: string | null;
   travel_budget: number | null;
   stay_budget: number | null;

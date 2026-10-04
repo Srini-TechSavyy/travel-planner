@@ -1,3 +1,5 @@
+import { stayLocationMetaFromDay, stayLocationPayload } from "../../shared/day-stay-location";
+import type { TripLocationMeta } from "../../shared/trip-location";
 import type { DayListItem, ItineraryDay } from "../../shared/types";
 
 export type DayFormValues = {
@@ -8,6 +10,7 @@ export type DayFormValues = {
   drive_time: string;
   stay_name: string;
   stay_location: string;
+  stay_location_meta: TripLocationMeta | null;
   notes: string;
   travel_budget: string;
   stay_budget: string;
@@ -28,6 +31,7 @@ export type DayItineraryFormValues = Pick<
   | "drive_time"
   | "stay_name"
   | "stay_location"
+  | "stay_location_meta"
   | "notes"
   | "sightseeing"
   | "restaurants"
@@ -68,6 +72,7 @@ export function toDayFormValues(day: ItineraryDay): DayFormValues {
     drive_time: day.drive_time ?? "",
     stay_name: day.stay_name ?? "",
     stay_location: day.stay_location ?? "",
+    stay_location_meta: stayLocationMetaFromDay(day),
     notes: day.notes ?? "",
     travel_budget: day.travel_budget != null ? String(day.travel_budget) : "",
     stay_budget: day.stay_budget != null ? String(day.stay_budget) : "",
@@ -92,6 +97,7 @@ export function toItineraryFormValues(day: ItineraryDay): DayItineraryFormValues
     drive_time: all.drive_time,
     stay_name: all.stay_name,
     stay_location: all.stay_location,
+    stay_location_meta: all.stay_location_meta,
     notes: all.notes,
     sightseeing: all.sightseeing,
     restaurants: all.restaurants,
@@ -133,6 +139,10 @@ export function budgetTotalFromForm(values: DayBudgetFormValues): number {
 }
 
 export function formToDayPatch(values: DayFormValues) {
+  const stayFields = stayLocationPayload(
+    values.stay_location,
+    values.stay_location_meta,
+  );
   return {
     date: values.date,
     from_location: values.from_location.trim() || null,
@@ -140,7 +150,7 @@ export function formToDayPatch(values: DayFormValues) {
     distance_km: values.distance_km ? Number(values.distance_km) : null,
     drive_time: values.drive_time.trim() || null,
     stay_name: values.stay_name.trim() || null,
-    stay_location: values.stay_location.trim() || null,
+    ...stayFields,
     notes: values.notes.trim() || null,
     travel_budget: parseBudget(values.travel_budget),
     stay_budget: parseBudget(values.stay_budget),

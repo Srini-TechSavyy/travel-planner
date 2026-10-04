@@ -46,5 +46,6 @@ export function tripLocationMetaFromPlace(
     lng: place.lng,
     country: place.country,
     admin_area: place.admin_area,
+    photo_name: place.photo_name,
   };
 }

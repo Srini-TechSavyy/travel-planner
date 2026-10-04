@@ -18,6 +18,12 @@ export type ItineraryDayRow = {
   drive_time: string | null;
   stay_name: string | null;
   stay_location: string | null;
+  stay_location_place_id: string | null;
+  stay_location_lat: number | null;
+  stay_location_lng: number | null;
+  stay_location_country: string | null;
+  stay_location_admin_area: string | null;
+  stay_location_photo_name: string | null;
   notes: string | null;
   travel_budget: number | null;
   stay_budget: number | null;
@@ -103,6 +109,12 @@ export async function insertItineraryDayFull(
     drive_time?: string | null;
     stay_name?: string | null;
     stay_location?: string | null;
+    stay_location_place_id?: string | null;
+    stay_location_lat?: number | null;
+    stay_location_lng?: number | null;
+    stay_location_country?: string | null;
+    stay_location_admin_area?: string | null;
+    stay_location_photo_name?: string | null;
     notes?: string | null;
     travel_budget?: number | null;
     stay_budget?: number | null;
@@ -120,10 +132,13 @@ export async function insertItineraryDayFull(
     .prepare(
       `INSERT INTO itinerary_days (
         id, trip_id, day_number, date,
-        from_location, to_location, distance_km, drive_time, stay_name, stay_location, notes,
+        from_location, to_location, distance_km, drive_time, stay_name, stay_location,
+        stay_location_place_id, stay_location_lat, stay_location_lng,
+        stay_location_country, stay_location_admin_area, stay_location_photo_name,
+        notes,
         travel_budget, stay_budget, restaurant_budget, activities_budget, other_budget,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       id,
@@ -136,6 +151,12 @@ export async function insertItineraryDayFull(
       day.drive_time ?? null,
       day.stay_name ?? null,
       day.stay_location ?? null,
+      day.stay_location_place_id ?? null,
+      day.stay_location_lat ?? null,
+      day.stay_location_lng ?? null,
+      day.stay_location_country ?? null,
+      day.stay_location_admin_area ?? null,
+      day.stay_location_photo_name ?? null,
       day.notes ?? null,
       day.travel_budget ?? null,
       day.stay_budget ?? null,
@@ -191,6 +212,12 @@ export type UpdateDayFields = {
   drive_time: string | null;
   stay_name: string | null;
   stay_location: string | null;
+  stay_location_place_id: string | null;
+  stay_location_lat: number | null;
+  stay_location_lng: number | null;
+  stay_location_country: string | null;
+  stay_location_admin_area: string | null;
+  stay_location_photo_name: string | null;
   notes: string | null;
   travel_budget: number | null;
   stay_budget: number | null;
@@ -219,6 +246,12 @@ export async function updateItineraryDay(
         drive_time = ?,
         stay_name = ?,
         stay_location = ?,
+        stay_location_place_id = ?,
+        stay_location_lat = ?,
+        stay_location_lng = ?,
+        stay_location_country = ?,
+        stay_location_admin_area = ?,
+        stay_location_photo_name = ?,
         notes = ?,
         travel_budget = ?,
         stay_budget = ?,
@@ -236,6 +269,12 @@ export async function updateItineraryDay(
       fields.drive_time,
       fields.stay_name,
       fields.stay_location,
+      fields.stay_location_place_id,
+      fields.stay_location_lat,
+      fields.stay_location_lng,
+      fields.stay_location_country,
+      fields.stay_location_admin_area,
+      fields.stay_location_photo_name,
       fields.notes,
       fields.travel_budget,
       fields.stay_budget,

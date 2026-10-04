@@ -44,6 +44,12 @@ function emptyDay(
     drive_time: null,
     stay_name: null,
     stay_location: null,
+    stay_location_place_id: null,
+    stay_location_lat: null,
+    stay_location_lng: null,
+    stay_location_country: null,
+    stay_location_admin_area: null,
+    stay_location_photo_name: null,
     notes: null,
     travel_budget: null,
     stay_budget: null,
@@ -87,11 +93,13 @@ type TripLocationDbFields = Pick<
   | "starting_location_lng"
   | "starting_location_country"
   | "starting_location_admin_area"
+  | "starting_location_photo_name"
   | "destination_place_id"
   | "destination_lat"
   | "destination_lng"
   | "destination_country"
   | "destination_admin_area"
+  | "destination_photo_name"
 >;
 
 export function createDraftTrip(
@@ -120,11 +128,13 @@ export function createDraftTrip(
     starting_location_lng: input.starting_location_lng ?? null,
     starting_location_country: input.starting_location_country ?? null,
     starting_location_admin_area: input.starting_location_admin_area ?? null,
+    starting_location_photo_name: input.starting_location_photo_name ?? null,
     destination_place_id: input.destination_place_id ?? null,
     destination_lat: input.destination_lat ?? null,
     destination_lng: input.destination_lng ?? null,
     destination_country: input.destination_country ?? null,
     destination_admin_area: input.destination_admin_area ?? null,
+    destination_photo_name: input.destination_photo_name ?? null,
     created_at: ts,
     updated_at: ts,
   };
@@ -163,11 +173,13 @@ export function updateDraftTripMeta(
       | "starting_location_lng"
       | "starting_location_country"
       | "starting_location_admin_area"
+      | "starting_location_photo_name"
       | "destination_place_id"
       | "destination_lat"
       | "destination_lng"
       | "destination_country"
       | "destination_admin_area"
+      | "destination_photo_name"
     >
   >,
 ): StoredDraft | null {
@@ -226,11 +238,13 @@ export function draftToImportPayload(bundle: StoredDraft) {
     starting_location_lng: bundle.trip.starting_location_lng,
     starting_location_country: bundle.trip.starting_location_country,
     starting_location_admin_area: bundle.trip.starting_location_admin_area,
+    starting_location_photo_name: bundle.trip.starting_location_photo_name,
     destination_place_id: bundle.trip.destination_place_id,
     destination_lat: bundle.trip.destination_lat,
     destination_lng: bundle.trip.destination_lng,
     destination_country: bundle.trip.destination_country,
     destination_admin_area: bundle.trip.destination_admin_area,
+    destination_photo_name: bundle.trip.destination_photo_name,
     days: bundle.days.map((d) => ({
       id: d.id,
       day_number: d.day_number,
@@ -241,6 +255,12 @@ export function draftToImportPayload(bundle: StoredDraft) {
       drive_time: d.drive_time,
       stay_name: d.stay_name,
       stay_location: d.stay_location,
+      stay_location_place_id: d.stay_location_place_id,
+      stay_location_lat: d.stay_location_lat,
+      stay_location_lng: d.stay_location_lng,
+      stay_location_country: d.stay_location_country,
+      stay_location_admin_area: d.stay_location_admin_area,
+      stay_location_photo_name: d.stay_location_photo_name,
       notes: d.notes,
       travel_budget: d.travel_budget,
       stay_budget: d.stay_budget,

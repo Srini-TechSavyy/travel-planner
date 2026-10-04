@@ -160,6 +160,14 @@ tripRoutes.patch("/:tripId", async (c) => {
       parsed.data.destination_admin_area !== undefined
         ? (parsed.data.destination_admin_area ?? null)
         : undefined,
+    starting_location_photo_name:
+      parsed.data.starting_location_photo_name !== undefined
+        ? (parsed.data.starting_location_photo_name ?? null)
+        : undefined,
+    destination_photo_name:
+      parsed.data.destination_photo_name !== undefined
+        ? (parsed.data.destination_photo_name ?? null)
+        : undefined,
   });
   if (!trip) {
     return c.json({ error: "Trip not found" }, 404);

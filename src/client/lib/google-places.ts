@@ -6,7 +6,8 @@ const PLACES_BASE = "https://places.googleapis.com/v1/places";
 const AUTOCOMPLETE_FIELD_MASK =
   "suggestions.placePrediction.placeId,suggestions.placePrediction.text";
 const PLACE_DETAILS_FIELD_MASK =
-  "id,displayName,location,addressComponents";
+  "id,displayName,location,addressComponents,photos";
+const PLACE_PHOTO_FIELD_MASK = "photos";
 
 const INCLUDED_PRIMARY_TYPES = [
   "locality",
@@ -47,7 +48,13 @@ type PlaceDetailsResponse = {
     shortText?: string;
     types?: string[];
   }>;
+  photos?: Array<{ name?: string }>;
 };
+
+function firstPhotoName(photos?: PlaceDetailsResponse["photos"]): string | null {
+  const name = photos?.[0]?.name?.trim();
+  return name || null;
+}
 
 function componentValue(
   components: PlaceDetailsResponse["addressComponents"],
@@ -156,5 +163,70 @@ export async function fetchPlaceDetails(
       data.addressComponents,
       "administrative_area_level_1",
     ),
+    photo_name: firstPhotoName(data.photos),
   };
+}
+
+const photoNameByPlaceId = new Map<string, string | null>();
+const photoNameInflight = new Map<string, Promise<string | null>>();
+
+export async function fetchPlacePhotoName(
+  placeId: string,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const cached = photoNameByPlaceId.get(placeId);
+  if (cached !== undefined) return cached;
+
+  const inflight = photoNameInflight.get(placeId);
+  if (inflight) return inflight;
+
+  const promise = (async () => {
+    const apiKey = getApiKey();
+    if (!apiKey) return null;
+
+    const encodedId = encodeURIComponent(placeId);
+    const response = await fetch(`${PLACES_BASE}/${encodedId}`, {
+      method: "GET",
+      headers: {
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": PLACE_PHOTO_FIELD_MASK,
+      },
+      signal,
+    });
+
+    if (!response.ok) {
+      photoNameByPlaceId.set(placeId, null);
+      return null;
+    }
+
+    const data = (await response.json()) as PlaceDetailsResponse;
+    const photoName = firstPhotoName(data.photos);
+    photoNameByPlaceId.set(placeId, photoName);
+    return photoName;
+  })().finally(() => {
+    photoNameInflight.delete(placeId);
+  });
+
+  photoNameInflight.set(placeId, promise);
+  return promise;
+}
+
+export function rememberPlacePhotoName(
+  placeId: string,
+  photoName: string | null,
+): void {
+  photoNameByPlaceId.set(placeId, photoName);
+}
+
+export function placePhotoMediaUrl(
+  photoName: string,
+  maxWidthPx = 800,
+): string | null {
+  const apiKey = getApiKey();
+  if (!apiKey || !photoName.trim()) return null;
+  const params = new URLSearchParams({
+    maxWidthPx: String(maxWidthPx),
+    key: apiKey,
+  });
+  return `https://places.googleapis.com/v1/${photoName}/media?${params}`;
 }

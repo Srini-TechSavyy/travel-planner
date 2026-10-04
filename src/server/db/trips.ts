@@ -24,11 +24,13 @@ export type TripRow = {
   starting_location_lng: number | null;
   starting_location_country: string | null;
   starting_location_admin_area: string | null;
+  starting_location_photo_name: string | null;
   destination_place_id: string | null;
   destination_lat: number | null;
   destination_lng: number | null;
   destination_country: string | null;
   destination_admin_area: string | null;
+  destination_photo_name: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -41,11 +43,13 @@ type TripLocationInput = {
   starting_location_lng?: number | null;
   starting_location_country?: string | null;
   starting_location_admin_area?: string | null;
+  starting_location_photo_name?: string | null;
   destination_place_id?: string | null;
   destination_lat?: number | null;
   destination_lng?: number | null;
   destination_country?: string | null;
   destination_admin_area?: string | null;
+  destination_photo_name?: string | null;
 };
 
 function tripLocationInsertBinds(input: TripLocationInput) {
@@ -57,11 +61,13 @@ function tripLocationInsertBinds(input: TripLocationInput) {
     input.starting_location_lng ?? null,
     input.starting_location_country ?? null,
     input.starting_location_admin_area ?? null,
+    input.starting_location_photo_name ?? null,
     input.destination_place_id ?? null,
     input.destination_lat ?? null,
     input.destination_lng ?? null,
     input.destination_country ?? null,
     input.destination_admin_area ?? null,
+    input.destination_photo_name ?? null,
   ];
 }
 
@@ -176,10 +182,11 @@ export async function createTrip(
         starting_location, destination,
         starting_location_place_id, starting_location_lat, starting_location_lng,
         starting_location_country, starting_location_admin_area,
+        starting_location_photo_name,
         destination_place_id, destination_lat, destination_lng,
-        destination_country, destination_admin_area,
+        destination_country, destination_admin_area, destination_photo_name,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         id,
@@ -288,6 +295,14 @@ export async function updateTripForUser(
     fields.destination_admin_area !== undefined
       ? fields.destination_admin_area
       : existing.destination_admin_area;
+  const starting_location_photo_name =
+    fields.starting_location_photo_name !== undefined
+      ? fields.starting_location_photo_name
+      : existing.starting_location_photo_name;
+  const destination_photo_name =
+    fields.destination_photo_name !== undefined
+      ? fields.destination_photo_name
+      : existing.destination_photo_name;
 
   await db
     .prepare(
@@ -296,8 +311,10 @@ export async function updateTripForUser(
         starting_location = ?, destination = ?,
         starting_location_place_id = ?, starting_location_lat = ?, starting_location_lng = ?,
         starting_location_country = ?, starting_location_admin_area = ?,
+        starting_location_photo_name = ?,
         destination_place_id = ?, destination_lat = ?, destination_lng = ?,
         destination_country = ?, destination_admin_area = ?,
+        destination_photo_name = ?,
         updated_at = ?
        WHERE id = ? AND user_id = ?`,
     )
@@ -314,11 +331,13 @@ export async function updateTripForUser(
       starting_location_lng,
       starting_location_country,
       starting_location_admin_area,
+      starting_location_photo_name,
       destination_place_id,
       destination_lat,
       destination_lng,
       destination_country,
       destination_admin_area,
+      destination_photo_name,
       ts,
       tripId,
       userId,
@@ -349,10 +368,11 @@ export async function importTripForUser(
         starting_location, destination,
         starting_location_place_id, starting_location_lat, starting_location_lng,
         starting_location_country, starting_location_admin_area,
+        starting_location_photo_name,
         destination_place_id, destination_lat, destination_lng,
-        destination_country, destination_admin_area,
+        destination_country, destination_admin_area, destination_photo_name,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         id,
@@ -375,10 +395,13 @@ export async function importTripForUser(
         .prepare(
           `INSERT INTO itinerary_days (
           id, trip_id, day_number, date,
-          from_location, to_location, distance_km, drive_time, stay_name, stay_location, notes,
+          from_location, to_location, distance_km, drive_time, stay_name, stay_location,
+          stay_location_place_id, stay_location_lat, stay_location_lng,
+          stay_location_country, stay_location_admin_area, stay_location_photo_name,
+          notes,
           travel_budget, stay_budget, restaurant_budget, activities_budget, other_budget,
           created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
           dayId,
@@ -391,6 +414,12 @@ export async function importTripForUser(
           day.drive_time ?? null,
           day.stay_name ?? null,
           day.stay_location ?? null,
+          day.stay_location_place_id ?? null,
+          day.stay_location_lat ?? null,
+          day.stay_location_lng ?? null,
+          day.stay_location_country ?? null,
+          day.stay_location_admin_area ?? null,
+          day.stay_location_photo_name ?? null,
           day.notes ?? null,
           day.travel_budget ?? null,
           day.stay_budget ?? null,

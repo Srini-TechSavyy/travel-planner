@@ -6,6 +6,7 @@ export type TripLocationMeta = {
   lng: number;
   country: string | null;
   admin_area: string | null;
+  photo_name: string | null;
 };
 
 export type TripLocationFieldPrefix = "starting_location" | "destination";
@@ -30,6 +31,11 @@ export function tripLocationMetaFromTrip(
       : trip.destination_lng;
   if (lat == null || lng == null) return null;
 
+  const photo_name =
+    field === "starting_location"
+      ? trip.starting_location_photo_name
+      : trip.destination_photo_name;
+
   return {
     place_id: placeId,
     lat,
@@ -42,6 +48,7 @@ export function tripLocationMetaFromTrip(
       field === "starting_location"
         ? trip.starting_location_admin_area
         : trip.destination_admin_area,
+    photo_name: photo_name ?? null,
   };
 }
 
@@ -59,6 +66,7 @@ export function tripLocationPayload(
       starting_location_lng: meta?.lng ?? null,
       starting_location_country: meta?.country ?? null,
       starting_location_admin_area: meta?.admin_area ?? null,
+      starting_location_photo_name: meta?.photo_name ?? null,
     };
   }
   return {
@@ -68,5 +76,6 @@ export function tripLocationPayload(
     destination_lng: meta?.lng ?? null,
     destination_country: meta?.country ?? null,
     destination_admin_area: meta?.admin_area ?? null,
+    destination_photo_name: meta?.photo_name ?? null,
   };
 }
