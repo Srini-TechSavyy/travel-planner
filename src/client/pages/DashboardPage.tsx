@@ -66,7 +66,7 @@ export function DashboardPage() {
     <div className="mx-auto max-w-5xl px-4 py-8">
       <section className="hero-banner px-6 py-12 sm:px-10 sm:py-14">
         <h1 className="max-w-xl text-3xl font-bold leading-tight sm:text-4xl">
-          Plan your journey, one day at a time.
+        Plan your journey. Make every day count.
         </h1>
         <p className="mt-3 max-w-lg text-teal-50/95">
           Build your itinerary, organize your days, and keep your trip details in
