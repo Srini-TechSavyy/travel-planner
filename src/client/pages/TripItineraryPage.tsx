@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { apiFetch } from "../api/client";
-import { DayBudgetModal } from "../components/DayBudgetModal";
 import { EditDayModal } from "../components/EditDayModal";
 import { ItineraryDayCard } from "../components/ItineraryDayCard";
 import { ItineraryDaySummaryRow } from "../components/ItineraryDaySummary";
-import { BudgetSummary } from "../components/BudgetSummary";
+import { TripBudgetModal } from "../components/TripBudgetModal";
 import { ErrorMessage } from "../components/ErrorMessage";
 import { LoadingState } from "../components/LoadingState";
 import { Toast } from "../components/Toast";
 import { TripCoverImage } from "../components/TripCoverImage";
 import { useAuth } from "../hooks/useAuth";
 import { useTripBundle } from "../hooks/useTripBundle";
+import { displayDayExpenseAmount, displayTripBudgetTotal, hasTripExpenses } from "../lib/budget";
 import {
   deleteDraftTrip,
   draftToImportPayload,
@@ -21,6 +21,7 @@ import {
 import { buildTripRoute, formatRoute } from "../lib/route";
 import {
   formatDateRange,
+  formatInr,
   travelersLabel,
   tripDayCount,
 } from "../lib/format";
@@ -32,7 +33,6 @@ import type { ItineraryDay } from "../../shared/types";
 import {
   mergeDayFormValues,
   toDayFormValues,
-  type DayBudgetFormValues,
   type DayItineraryFormValues,
 } from "../lib/dayForm";
 
@@ -45,7 +45,7 @@ export function TripItineraryPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const bundle = useTripBundle(tripId);
   const [editingDay, setEditingDay] = useState<ItineraryDay | null>(null);
-  const [budgetDay, setBudgetDay] = useState<ItineraryDay | null>(null);
+  const [budgetOpen, setBudgetOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const [savingTrip, setSavingTrip] = useState(false);
   const [tripSaveDone, setTripSaveDone] = useState(false);
@@ -142,14 +142,6 @@ export function TripItineraryPage() {
     );
   }
 
-  async function handleSaveBudget(values: DayBudgetFormValues) {
-    if (!budgetDay) return;
-    await bundle.saveDay(
-      budgetDay.id,
-      mergeDayFormValues(toDayFormValues(budgetDay), values),
-    );
-  }
-
   async function handleAddDay() {
     setAdding(true);
     setPageError(null);
@@ -176,6 +168,7 @@ export function TripItineraryPage() {
   const routeStops = buildTripRoute(trip, days);
   const routeLabel = formatRoute(routeStops);
   const dayCount = tripDayCount(trip.start_date, trip.end_date);
+  const budgetTotal = displayTripBudgetTotal(bundle.expenses, days);
 
   const saveButtonLabel = tripSaveDone
     ? "Saved"
@@ -239,12 +232,19 @@ export function TripItineraryPage() {
         </div>
       )}
 
-      <div className="mt-8">
-        <BudgetSummary
-          days={days}
-          startDate={trip.start_date}
-          endDate={trip.end_date}
-        />
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setBudgetOpen(true)}
+          className="inline-flex flex-col items-start rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-left hover:bg-teal-100 sm:flex-row sm:items-center sm:gap-3"
+        >
+          <span className="text-sm font-semibold text-teal-900">💰 Budget</span>
+          {budgetTotal > 0 && (
+            <span className="mt-0.5 text-lg font-bold tabular-nums text-teal-800 sm:mt-0">
+              {formatInr(budgetTotal)}
+            </span>
+          )}
+        </button>
       </div>
 
       {(bundle.error || pageError) && (
@@ -260,14 +260,24 @@ export function TripItineraryPage() {
       )}
 
       <div className="mt-4 space-y-4">
-        {days.map((day) => (
+        {days.map((day) => {
+          const expenseAmount = displayDayExpenseAmount(
+            day,
+            bundle.expenses,
+            bundle.expenseSummary,
+          );
+          return (
           <ItineraryDayCard
             key={day.id}
             day={day}
+            expenseAmount={expenseAmount}
+            legacyExpenseDisplay={
+              expenseAmount != null && !hasTripExpenses(bundle.expenses)
+            }
             onEditDay={() => setEditingDay(day)}
-            onBudget={() => setBudgetDay(day)}
           />
-        ))}
+          );
+        })}
       </div>
 
       <button
@@ -288,14 +298,22 @@ export function TripItineraryPage() {
         />
       )}
 
-      {budgetDay && (
-        <DayBudgetModal
-          day={budgetDay}
-          open={!!budgetDay}
-          onClose={() => setBudgetDay(null)}
-          onSave={handleSaveBudget}
-        />
-      )}
+      <TripBudgetModal
+        open={budgetOpen}
+        onClose={() => setBudgetOpen(false)}
+        days={days}
+        expenses={bundle.expenses}
+        summary={bundle.expenseSummary}
+        onCreateExpense={async (input) => {
+          await bundle.createExpense(input);
+        }}
+        onUpdateExpense={async (id, input) => {
+          await bundle.updateExpense(id, input);
+        }}
+        onDeleteExpense={async (id) => {
+          await bundle.deleteExpense(id);
+        }}
+      />
 
       {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
     </div>

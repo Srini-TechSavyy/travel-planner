@@ -1,4 +1,6 @@
-import type { DraftTripBundle, ItineraryDay, Trip } from "../../shared/types";
+import type { DraftTripBundle, ItineraryDay, Trip, TripExpense } from "../../shared/types";
+import { summarizeTripExpenses } from "../../shared/expenses";
+import type { ExpenseCategory } from "../../shared/expenses";
 import { datesInclusive } from "./dates";
 
 const STORAGE_KEY = "tripmate_drafts_v1";
@@ -11,12 +13,16 @@ export function isDraftTripId(id: string): boolean {
 
 type StoredDraft = DraftTripBundle;
 
+function normalizeDraft(bundle: StoredDraft): StoredDraft {
+  return { ...bundle, expenses: bundle.expenses ?? [] };
+}
+
 function readAll(): StoredDraft[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as StoredDraft[];
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.map(normalizeDraft) : [];
   } catch {
     return [];
   }
@@ -143,6 +149,7 @@ export function createDraftTrip(
   const bundle: StoredDraft = {
     trip,
     days,
+    expenses: [],
     server_trip_id: crypto.randomUUID(),
   };
   saveDraftBundle(bundle);
@@ -222,6 +229,89 @@ export function appendDraftDay(tripId: string, date: string): StoredDraft | null
   return bundle;
 }
 
+export type DraftExpenseInput = {
+  category: ExpenseCategory;
+  expense_type: string;
+  amount: number;
+  day_id?: string | null;
+  notes?: string | null;
+};
+
+function recomputeDraftExpenses(bundle: StoredDraft): StoredDraft {
+  bundle.expenses = bundle.expenses ?? [];
+  return bundle;
+}
+
+export function addDraftExpense(
+  tripId: string,
+  input: DraftExpenseInput,
+): StoredDraft | null {
+  const bundle = getDraftTrip(tripId);
+  if (!bundle) return null;
+  const ts = new Date().toISOString();
+  const expense: TripExpense = {
+    id: crypto.randomUUID(),
+    trip_id: tripId,
+    day_id: input.day_id ?? null,
+    category: input.category,
+    expense_type: input.expense_type,
+    amount: input.amount,
+    notes: input.notes ?? null,
+    created_at: ts,
+    updated_at: ts,
+  };
+  recomputeDraftExpenses(bundle);
+  bundle.expenses!.push(expense);
+  bundle.trip.updated_at = ts;
+  saveDraftBundle(bundle);
+  return bundle;
+}
+
+export function updateDraftExpense(
+  tripId: string,
+  expenseId: string,
+  input: Partial<DraftExpenseInput>,
+): StoredDraft | null {
+  const bundle = getDraftTrip(tripId);
+  if (!bundle || !bundle.expenses) return null;
+  const idx = bundle.expenses.findIndex((e) => e.id === expenseId);
+  if (idx < 0) return null;
+  const ts = new Date().toISOString();
+  const prev = bundle.expenses[idx]!;
+  bundle.expenses[idx] = {
+    ...prev,
+    category: input.category ?? prev.category,
+    expense_type: input.expense_type ?? prev.expense_type,
+    amount: input.amount ?? prev.amount,
+    day_id: input.day_id !== undefined ? input.day_id : prev.day_id,
+    notes: input.notes !== undefined ? input.notes : prev.notes,
+    updated_at: ts,
+  };
+  bundle.trip.updated_at = ts;
+  saveDraftBundle(bundle);
+  return bundle;
+}
+
+export function deleteDraftExpense(
+  tripId: string,
+  expenseId: string,
+): StoredDraft | null {
+  const bundle = getDraftTrip(tripId);
+  if (!bundle || !bundle.expenses) return null;
+  const next = bundle.expenses.filter((e) => e.id !== expenseId);
+  if (next.length === bundle.expenses.length) return null;
+  bundle.expenses = next;
+  bundle.trip.updated_at = new Date().toISOString();
+  saveDraftBundle(bundle);
+  return bundle;
+}
+
+export function draftExpenseSummary(tripId: string) {
+  const bundle = getDraftTrip(tripId);
+  if (!bundle?.expenses) return summarizeTripExpenses([]);
+  return summarizeTripExpenses(bundle.expenses);
+}
+
 export function draftToImportPayload(bundle: StoredDraft) {
   const tripId = ensureServerTripId(bundle);
   return {
@@ -282,6 +372,14 @@ export function draftToImportPayload(bundle: StoredDraft) {
         name: s.name,
         sort_order: s.sort_order ?? i,
       })),
+    })),
+    expenses: (bundle.expenses ?? []).map((e) => ({
+      id: e.id,
+      day_id: e.day_id,
+      category: e.category,
+      expense_type: e.expense_type,
+      amount: e.amount,
+      notes: e.notes,
     })),
   };
 }

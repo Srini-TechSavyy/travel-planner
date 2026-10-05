@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import type { Trip, TripListItem } from "../../shared/types";
-import { hasAnyTripBudget, tripTotals } from "../lib/budget";
+import { displayTripBudgetTotal } from "../lib/budget";
 import { buildTripRoute, formatRoute } from "../lib/route";
 import {
   formatDateRange,
@@ -27,8 +27,12 @@ export function TripCard({ trip, isDraft, onDelete, deleting }: Props) {
   const route = formatRoute(routeStops);
 
   let budgetLabel: string | null = null;
-  if (isDraft && draftBundle && hasAnyTripBudget(draftBundle.days)) {
-    budgetLabel = formatInr(tripTotals(draftBundle.days).total);
+  if (isDraft && draftBundle) {
+    const total = displayTripBudgetTotal(
+      draftBundle.expenses ?? [],
+      draftBundle.days,
+    );
+    if (total > 0) budgetLabel = formatInr(total);
   } else if ("budget_total" in trip && trip.budget_total) {
     budgetLabel = formatInr(trip.budget_total);
   }

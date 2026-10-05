@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+  EXPENSE_CATEGORIES,
+  isExpenseTypeForCategory,
+  type ExpenseCategory,
+} from "../shared/expenses";
 
 const dateString = z
   .string()
@@ -124,6 +129,65 @@ const importDaySchema = z.object({
   foods: z.array(listItemSchema).max(100).optional(),
 });
 
+const expenseCategorySchema = z.enum(EXPENSE_CATEGORIES);
+
+const expenseBodyFields = {
+  category: expenseCategorySchema,
+  expense_type: z.string().trim().min(1).max(100),
+  amount: z.number().int().min(1).max(100_000_000),
+  day_id: z.string().uuid().nullable().optional(),
+  notes: z.string().trim().max(2000).nullable().optional(),
+};
+
+function expenseTypeMatchesCategory(
+  data: { category: ExpenseCategory; expense_type: string },
+  ctx: z.RefinementCtx,
+) {
+  if (!isExpenseTypeForCategory(data.category, data.expense_type)) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Expense type does not match category",
+      path: ["expense_type"],
+    });
+  }
+}
+
+export const createExpenseSchema = z
+  .object(expenseBodyFields)
+  .superRefine(expenseTypeMatchesCategory);
+
+export const updateExpenseSchema = z
+  .object({
+    category: expenseCategorySchema.optional(),
+    expense_type: z.string().trim().min(1).max(100).optional(),
+    amount: z.number().int().min(1).max(100_000_000).optional(),
+    day_id: z.string().uuid().nullable().optional(),
+    notes: z.string().trim().max(2000).nullable().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.category && data.expense_type) {
+      expenseTypeMatchesCategory(
+        { category: data.category, expense_type: data.expense_type },
+        ctx,
+      );
+    } else if (data.category && !data.expense_type) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Expense type required when category is set",
+        path: ["expense_type"],
+      });
+    }
+  });
+
+const importExpenseSchema = z.object({
+  id: z.string().uuid().optional(),
+  day_id: z.string().uuid().nullable().optional(),
+  category: expenseCategorySchema,
+  expense_type: z.string().trim().min(1).max(100),
+  amount: z.number().int().min(1).max(100_000_000),
+  notes: z.string().trim().max(2000).nullable().optional(),
+});
+
 export const importTripSchema = z
   .object({
     id: z.string().uuid().optional(),
@@ -134,6 +198,7 @@ export const importTripSchema = z
     children: z.number().int().min(0).max(99),
     ...tripLocationFields,
     days: z.array(importDaySchema).min(1).max(366),
+    expenses: z.array(importExpenseSchema).max(500).optional(),
   })
   .refine((d) => d.end_date >= d.start_date, {
     message: "End date must be on or after start date",

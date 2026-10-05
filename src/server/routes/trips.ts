@@ -3,6 +3,10 @@ import type { Env } from "../../env";
 import { requireAuth, type AuthVariables } from "../auth/middleware";
 import { listDaysForTrip } from "../db/itinerary-days";
 import {
+  listExpensesForTrip,
+  summarizeTripExpenses,
+} from "../db/trip-expenses";
+import {
   createTrip,
   deleteTripForUser,
   getTripForUser,
@@ -94,7 +98,9 @@ tripRoutes.get("/:tripId", async (c) => {
     return c.json({ error: "Trip not found" }, 404);
   }
   const days = await listDaysForTrip(c.env.DB, tripId);
-  return c.json({ trip, days });
+  const expenses = await listExpensesForTrip(c.env.DB, tripId);
+  const expense_summary = summarizeTripExpenses(expenses);
+  return c.json({ trip, days, expenses, expense_summary });
 });
 
 tripRoutes.patch("/:tripId", async (c) => {

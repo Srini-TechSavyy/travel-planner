@@ -5,6 +5,10 @@ import {
   listDaysForTrip,
 } from "./itinerary-days";
 import { buildDayListStatements } from "./trip-day-lists";
+import {
+  backfillExpensesFromDayBudgets,
+  insertImportedExpenses,
+} from "./trip-expenses";
 import type { ItineraryDay, Trip, TripListItem } from "../../shared/types";
 import type { z } from "zod";
 import type { importTripSchema } from "../validation";
@@ -97,12 +101,8 @@ export async function listTripsForUser(
     .prepare(
       `SELECT t.*,
         (
-          SELECT COALESCE(SUM(
-            COALESCE(d.travel_budget, 0) + COALESCE(d.stay_budget, 0) +
-            COALESCE(d.restaurant_budget, 0) + COALESCE(d.activities_budget, 0) +
-            COALESCE(d.other_budget, 0)
-          ), 0)
-          FROM itinerary_days d WHERE d.trip_id = t.id
+          SELECT COALESCE(SUM(e.amount), 0)
+          FROM trip_expenses e WHERE e.trip_id = t.id
         ) AS budget_sum
        FROM trips t
        WHERE t.user_id = ?
@@ -453,6 +453,24 @@ export async function importTripForUser(
   const trip = await getTripForUser(db, id, userId);
   if (!trip) throw new Error("Failed to import trip");
   const days = await listDaysForTrip(db, id);
+
+  if (payload.expenses && payload.expenses.length > 0) {
+    await insertImportedExpenses(
+      db,
+      id,
+      payload.expenses.map((e) => ({
+        id: e.id,
+        day_id: e.day_id ?? null,
+        category: e.category,
+        expense_type: e.expense_type,
+        amount: e.amount,
+        notes: e.notes ?? null,
+      })),
+    );
+  } else {
+    await backfillExpensesFromDayBudgets(db, id);
+  }
+
   return { trip, days, created: true };
 }
 

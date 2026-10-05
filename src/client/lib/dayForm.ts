@@ -38,31 +38,6 @@ export type DayItineraryFormValues = Pick<
   | "foods"
 >;
 
-export type DayBudgetFormValues = Pick<
-  DayFormValues,
-  | "travel_budget"
-  | "stay_budget"
-  | "restaurant_budget"
-  | "activities_budget"
-  | "other_budget"
->;
-
-export const BUDGET_FIELD_KEYS = [
-  "travel_budget",
-  "stay_budget",
-  "restaurant_budget",
-  "activities_budget",
-  "other_budget",
-] as const satisfies readonly (keyof DayBudgetFormValues)[];
-
-export const BUDGET_FIELD_LABELS: Record<keyof DayBudgetFormValues, string> = {
-  travel_budget: "Travel",
-  stay_budget: "Stay",
-  restaurant_budget: "Restaurants",
-  activities_budget: "Activities",
-  other_budget: "Other",
-};
-
 export function toDayFormValues(day: ItineraryDay): DayFormValues {
   return {
     date: day.date,
@@ -105,17 +80,6 @@ export function toItineraryFormValues(day: ItineraryDay): DayItineraryFormValues
   };
 }
 
-export function toBudgetFormValues(day: ItineraryDay): DayBudgetFormValues {
-  const all = toDayFormValues(day);
-  return {
-    travel_budget: all.travel_budget,
-    stay_budget: all.stay_budget,
-    restaurant_budget: all.restaurant_budget,
-    activities_budget: all.activities_budget,
-    other_budget: all.other_budget,
-  };
-}
-
 export function mergeDayFormValues(
   base: DayFormValues,
   patch: Partial<DayFormValues>,
@@ -129,13 +93,6 @@ export function parseBudget(v: string): number | null {
   const n = Number(t);
   if (!Number.isFinite(n) || n < 0) return null;
   return Math.round(n);
-}
-
-export function budgetTotalFromForm(values: DayBudgetFormValues): number {
-  return BUDGET_FIELD_KEYS.reduce(
-    (sum, key) => sum + (parseBudget(values[key]) ?? 0),
-    0,
-  );
 }
 
 export function formToDayPatch(values: DayFormValues) {

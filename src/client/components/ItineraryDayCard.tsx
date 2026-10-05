@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import type { DayListItem, ItineraryDay } from "../../shared/types";
-import { dayTotal, hasDayBudget } from "../lib/budget";
 import { formatDayOfWeek, formatInr, formatShortDate } from "../lib/format";
 import { PlaceLocationImage } from "./PlaceLocationImage";
 
@@ -8,11 +7,17 @@ const LIST_PREVIEW = 2;
 
 type Props = {
   day: ItineraryDay;
+  expenseAmount: number | null;
+  legacyExpenseDisplay?: boolean;
   onEditDay: () => void;
-  onBudget: () => void;
 };
 
-export function ItineraryDayCard({ day, onEditDay, onBudget }: Props) {
+export function ItineraryDayCard({
+  day,
+  expenseAmount,
+  legacyExpenseDisplay = false,
+  onEditDay,
+}: Props) {
   const from = day.from_location?.trim() ?? "";
   const to = day.to_location?.trim() ?? "";
   const hasFrom = from.length > 0;
@@ -37,6 +42,8 @@ export function ItineraryDayCard({ day, onEditDay, onBudget }: Props) {
     day.restaurants.length > 0 ||
     day.foods.length > 0 ||
     (day.notes && !hasTravel);
+
+  const showLegacyCompact = legacyExpenseDisplay;
 
   return (
     <article className="card flex overflow-hidden">
@@ -65,9 +72,6 @@ export function ItineraryDayCard({ day, onEditDay, onBudget }: Props) {
         <div className="flex shrink-0 flex-wrap justify-end gap-2">
           <button type="button" onClick={onEditDay} className="btn-secondary">
             Edit Day
-          </button>
-          <button type="button" onClick={onBudget} className="btn-secondary">
-            Budget
           </button>
         </div>
       </header>
@@ -136,7 +140,7 @@ export function ItineraryDayCard({ day, onEditDay, onBudget }: Props) {
         </div>
       )}
 
-      {hasDayBudget(day) && (
+      {expenseAmount != null && (
         <div
           className={
             hasItinerary
@@ -144,10 +148,18 @@ export function ItineraryDayCard({ day, onEditDay, onBudget }: Props) {
               : "mt-3"
           }
         >
-          <p className="text-sm font-medium text-slate-600">💰 Budget</p>
-          <p className="mt-0.5 text-sm font-semibold tabular-nums text-slate-900">
-            {formatInr(dayTotal(day))}
-          </p>
+          {showLegacyCompact ? (
+            <p className="text-sm font-semibold tabular-nums text-slate-900">
+              💰 {formatInr(expenseAmount)}
+            </p>
+          ) : (
+            <>
+              <p className="text-sm font-medium text-slate-600">💰 Expenses</p>
+              <p className="mt-0.5 text-sm font-semibold tabular-nums text-slate-900">
+                {formatInr(expenseAmount)}
+              </p>
+            </>
+          )}
         </div>
       )}
       </div>

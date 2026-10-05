@@ -71,8 +71,23 @@ export type ItineraryDay = {
   updated_at: string;
 };
 
+export type TripExpense = {
+  id: string;
+  trip_id: string;
+  day_id: string | null;
+  category: string;
+  expense_type: string;
+  amount: number;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TripExpenseSummary = import("./expenses").ExpenseSummary;
+
 export type DraftTripBundle = {
   trip: Trip;
   days: ItineraryDay[];
+  expenses?: TripExpense[];
   server_trip_id?: string;
 };

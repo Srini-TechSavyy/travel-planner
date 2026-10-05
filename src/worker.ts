@@ -3,6 +3,7 @@ import type { Env } from "./env";
 import { authRoutes } from "./server/routes/auth";
 import { itineraryDayRoutes } from "./server/routes/itinerary-days";
 import { meRoutes } from "./server/routes/me";
+import { tripExpenseRoutes } from "./server/routes/trip-expenses";
 import { tripRoutes } from "./server/routes/trips";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -11,6 +12,7 @@ app.route("/auth", authRoutes);
 app.route("/api/me", meRoutes);
 app.route("/api/trips", tripRoutes);
 app.route("/api/trips", itineraryDayRoutes);
+app.route("/api/trips", tripExpenseRoutes);
 
 app.notFound((c) => c.json({ error: "Not found" }, 404));
 
