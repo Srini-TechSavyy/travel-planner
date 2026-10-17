@@ -153,6 +153,8 @@ export async function fetchPlaceDetails(
     throw new Error("Place details missing required fields");
   }
 
+  locationByPlaceId.set(id, { lat, lng });
+
   return {
     place_id: id,
     display_name: displayName,
@@ -167,8 +169,50 @@ export async function fetchPlaceDetails(
   };
 }
 
+const locationByPlaceId = new Map<string, { lat: number; lng: number }>();
+const locationInflight = new Map<
+  string,
+  Promise<{ lat: number; lng: number } | null>
+>();
+
 const photoNameByPlaceId = new Map<string, string | null>();
 const photoNameInflight = new Map<string, Promise<string | null>>();
+
+export function rememberPlaceLocation(
+  placeId: string,
+  lat: number,
+  lng: number,
+): void {
+  locationByPlaceId.set(placeId, { lat, lng });
+}
+
+export async function fetchPlaceLocationCached(
+  placeId: string,
+  signal?: AbortSignal,
+): Promise<{ lat: number; lng: number } | null> {
+  const cached = locationByPlaceId.get(placeId);
+  if (cached) return cached;
+
+  const inflight = locationInflight.get(placeId);
+  if (inflight) return inflight;
+
+  const promise = (async () => {
+    const sessionToken = crypto.randomUUID();
+    try {
+      const details = await fetchPlaceDetails(placeId, sessionToken, signal);
+      const coords = { lat: details.lat, lng: details.lng };
+      locationByPlaceId.set(placeId, coords);
+      return coords;
+    } catch {
+      return null;
+    }
+  })().finally(() => {
+    locationInflight.delete(placeId);
+  });
+
+  locationInflight.set(placeId, promise);
+  return promise;
+}
 
 export async function fetchPlacePhotoName(
   placeId: string,

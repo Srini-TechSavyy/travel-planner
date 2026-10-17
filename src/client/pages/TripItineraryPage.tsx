@@ -9,6 +9,7 @@ import { ErrorMessage } from "../components/ErrorMessage";
 import { LoadingState } from "../components/LoadingState";
 import { Toast } from "../components/Toast";
 import { TripCoverImage } from "../components/TripCoverImage";
+import { TripMapView } from "../components/TripMapView";
 import { useAuth } from "../hooks/useAuth";
 import { useTripBundle } from "../hooks/useTripBundle";
 import { displayDayExpenseAmount, displayTripBudgetTotal, hasTripExpenses } from "../lib/budget";
@@ -52,6 +53,7 @@ export function TripItineraryPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
   const saveInFlightRef = useRef(false);
+  const [pageView, setPageView] = useState<"itinerary" | "map">("itinerary");
 
   useEffect(() => {
     if (searchParams.get("saved") === "1") {
@@ -253,41 +255,78 @@ export function TripItineraryPage() {
         </div>
       )}
 
-      {days.length > 0 && (
-        <div className="mt-8">
-          <ItineraryDaySummaryRow days={days} />
-        </div>
-      )}
-
-      <div className="mt-4 space-y-4">
-        {days.map((day) => {
-          const expenseAmount = displayDayExpenseAmount(
-            day,
-            bundle.expenses,
-            bundle.expenseSummary,
-          );
-          return (
-          <ItineraryDayCard
-            key={day.id}
-            day={day}
-            expenseAmount={expenseAmount}
-            legacyExpenseDisplay={
-              expenseAmount != null && !hasTripExpenses(bundle.expenses)
-            }
-            onEditDay={() => setEditingDay(day)}
-          />
-          );
-        })}
+      <div
+        className="mt-8 inline-flex rounded-lg border border-slate-200 bg-white p-0.5"
+        role="group"
+        aria-label="Trip page view"
+      >
+        <button
+          type="button"
+          className={`rounded-md px-4 py-2 text-sm font-medium ${
+            pageView === "itinerary"
+              ? "bg-teal-600 text-white"
+              : "text-slate-700 hover:bg-slate-50"
+          }`}
+          onClick={() => setPageView("itinerary")}
+        >
+          Itinerary
+        </button>
+        <button
+          type="button"
+          className={`rounded-md px-4 py-2 text-sm font-medium ${
+            pageView === "map"
+              ? "bg-teal-600 text-white"
+              : "text-slate-700 hover:bg-slate-50"
+          }`}
+          onClick={() => setPageView("map")}
+        >
+          Map
+        </button>
       </div>
 
-      <button
-        type="button"
-        disabled={adding || days.length === 0}
-        onClick={() => void handleAddDay()}
-        className="mt-8 w-full rounded-xl border border-dashed border-teal-300 bg-teal-50 py-3 text-sm font-medium text-teal-800 hover:bg-teal-100 disabled:opacity-60 sm:w-auto sm:px-6"
-      >
-        {adding ? "Adding…" : "+ Add day"}
-      </button>
+      {pageView === "map" ? (
+        <div className="mt-6">
+          <TripMapView trip={trip} days={days} />
+        </div>
+      ) : (
+        <>
+          {days.length > 0 && (
+            <div className="mt-8">
+              <ItineraryDaySummaryRow days={days} />
+            </div>
+          )}
+
+          <div className="mt-4 space-y-4">
+            {days.map((day) => {
+              const expenseAmount = displayDayExpenseAmount(
+                day,
+                bundle.expenses,
+                bundle.expenseSummary,
+              );
+              return (
+                <ItineraryDayCard
+                  key={day.id}
+                  day={day}
+                  expenseAmount={expenseAmount}
+                  legacyExpenseDisplay={
+                    expenseAmount != null && !hasTripExpenses(bundle.expenses)
+                  }
+                  onEditDay={() => setEditingDay(day)}
+                />
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            disabled={adding || days.length === 0}
+            onClick={() => void handleAddDay()}
+            className="mt-8 w-full rounded-xl border border-dashed border-teal-300 bg-teal-50 py-3 text-sm font-medium text-teal-800 hover:bg-teal-100 disabled:opacity-60 sm:w-auto sm:px-6"
+          >
+            {adding ? "Adding…" : "+ Add day"}
+          </button>
+        </>
+      )}
 
       {editingDay && (
         <EditDayModal

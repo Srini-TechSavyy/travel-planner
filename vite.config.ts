@@ -35,11 +35,16 @@ export default defineConfig(({ mode }) => {
     env.VITE_GOOGLE_PLACES_API_KEY?.trim() ||
     devVars.VITE_GOOGLE_PLACES_API_KEY?.trim() ||
     "";
+  const mapsKey =
+    env.VITE_GOOGLE_MAPS_API_KEY?.trim() ||
+    devVars.VITE_GOOGLE_MAPS_API_KEY?.trim() ||
+    "";
 
   return {
     plugins: [cloudflare(), react(), tailwindcss()],
     define: {
       "import.meta.env.VITE_GOOGLE_PLACES_API_KEY": JSON.stringify(placesKey),
+      "import.meta.env.VITE_GOOGLE_MAPS_API_KEY": JSON.stringify(mapsKey),
     },
   };
 });
