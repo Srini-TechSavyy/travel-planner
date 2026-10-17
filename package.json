@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test": "node --import tsx --test src/client/lib/trip-map-points.test.ts",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
     "db:migrate:local": "wrangler d1 migrations apply tripmate-db --local",
@@ -32,6 +33,7 @@
     "@vitejs/plugin-react": "^6.1.1",
     "oxlint": "^1.81.0",
     "tailwindcss": "^4.3.3",
+    "tsx": "^4.20.5",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",
     "wrangler": "^4.145.0"

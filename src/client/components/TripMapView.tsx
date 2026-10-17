@@ -81,15 +81,15 @@ export function TripMapView({ trip, days }: Props) {
     return () => controller.abort();
   }, [trip, days]);
 
-  const { points, unmappedStops } = useMemo(
+  const { points, unmappedStops, returnsToStart } = useMemo(
     () => buildTripMapPoints(resolvedTrip, resolvedDays),
     [resolvedTrip, resolvedDays],
   );
 
   const visibleMarkers: TripMapPoint[] = useMemo(() => {
     if (scope === "all") return points;
-    return filterMarkersForDay(points, selectedDay, totalDays);
-  }, [points, scope, selectedDay, totalDays]);
+    return filterMarkersForDay(points, selectedDay, totalDays, returnsToStart);
+  }, [points, scope, selectedDay, totalDays, returnsToStart]);
 
   const routeWaypoints = useMemo(
     () =>
@@ -98,8 +98,9 @@ export function TripMapView({ trip, days }: Props) {
         scope,
         scope === "day" ? selectedDay : null,
         totalDays,
+        returnsToStart,
       ),
-    [points, scope, selectedDay, totalDays],
+    [points, scope, selectedDay, totalDays, returnsToStart],
   );
 
   const { legs, loading: routesLoading, error: routesError } = useTripMapRoutes(

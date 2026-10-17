@@ -1,67 +1,178 @@
 import type { ItineraryDay, Trip } from "../../shared/types";
-import type { LatLng, TripMapPoint } from "../../shared/trip-map";
+import type { TripMapPoint } from "../../shared/trip-map";
 import { fetchPlaceLocationCached } from "./google-places";
 import { buildTripRoute } from "./route";
+import {
+  type LocationIdentity,
+  locationIdentityFromStrings,
+  sameLocation,
+} from "./trip-map-location";
 
-function coordsEqual(a: LatLng, b: LatLng): boolean {
-  return Math.abs(a.lat - b.lat) < 1e-6 && Math.abs(a.lng - b.lng) < 1e-6;
-}
+export {
+  normalizeGooglePlaceId,
+  normalizeLocationName,
+  sameLocation,
+} from "./trip-map-location";
 
 type RawPoint = Omit<TripMapPoint, "markerIndex">;
 
-function pushPoint(raw: RawPoint[], point: RawPoint) {
-  const last = raw[raw.length - 1];
-  if (last && coordsEqual(last, point)) return;
-  raw.push(point);
+function sortedDays(days: ItineraryDay[]): ItineraryDay[] {
+  return [...days].sort((a, b) => a.day_number - b.day_number);
+}
+
+function stayPointsFromDays(days: ItineraryDay[]): RawPoint[] {
+  const points: RawPoint[] = [];
+  for (const day of sortedDays(days)) {
+    if (day.stay_location_lat == null || day.stay_location_lng == null) {
+      continue;
+    }
+    const label =
+      day.stay_location?.trim() ||
+      day.stay_name?.trim() ||
+      `Day ${day.day_number} stay`;
+    points.push({
+      id: `stay-${day.id}`,
+      label,
+      lat: day.stay_location_lat,
+      lng: day.stay_location_lng,
+      kind: "stay",
+      dayNumber: day.day_number,
+      placeId: day.stay_location_place_id ?? undefined,
+    });
+  }
+  return points;
+}
+
+function startIdentity(trip: Trip) {
+  return locationIdentityFromStrings(
+    trip.starting_location,
+    trip.starting_location_place_id,
+    trip.starting_location_lat,
+    trip.starting_location_lng,
+  );
+}
+
+function destinationIdentity(trip: Trip) {
+  return locationIdentityFromStrings(
+    trip.destination,
+    trip.destination_place_id,
+    trip.destination_lat,
+    trip.destination_lng,
+  );
+}
+
+function textMatchesStart(trip: Trip, text: string | null | undefined): boolean {
+  if (!text?.trim()) return false;
+  return sameLocation(
+    startIdentity(trip),
+    locationIdentityFromStrings(text, null, null, null),
+  );
+}
+
+/** True when the itinerary ends by returning to the trip starting location. */
+export function itineraryReturnsToStart(trip: Trip, days: ItineraryDay[]): boolean {
+  const ordered = sortedDays(days);
+  for (let i = ordered.length - 1; i >= 0; i--) {
+    const day = ordered[i];
+    if (textMatchesStart(trip, day.to_location)) return true;
+    if (textMatchesStart(trip, day.stay_location)) return true;
+    if (textMatchesStart(trip, day.stay_name)) return true;
+  }
+  return false;
+}
+
+function hasStartCoords(trip: Trip): boolean {
+  return trip.starting_location_lat != null && trip.starting_location_lng != null;
+}
+
+function hasDestinationCoords(trip: Trip): boolean {
+  return trip.destination_lat != null && trip.destination_lng != null;
+}
+
+function startRawPoint(trip: Trip): RawPoint | null {
+  if (!hasStartCoords(trip)) return null;
+  return {
+    id: "start",
+    label: trip.starting_location?.trim() || "Start",
+    lat: trip.starting_location_lat!,
+    lng: trip.starting_location_lng!,
+    kind: "start",
+    placeId: trip.starting_location_place_id ?? undefined,
+  };
+}
+
+function destinationRawPoint(trip: Trip): RawPoint | null {
+  if (!hasDestinationCoords(trip)) return null;
+  return {
+    id: "destination",
+    label: trip.destination?.trim() || "Destination",
+    lat: trip.destination_lat!,
+    lng: trip.destination_lng!,
+    kind: "destination",
+    placeId: trip.destination_place_id ?? undefined,
+  };
+}
+
+function pointExists(points: RawPoint[], candidate: LocationIdentity): boolean {
+  return points.some((p) =>
+    sameLocation(
+      { placeId: p.placeId, label: p.label, lat: p.lat, lng: p.lng },
+      candidate,
+    ),
+  );
 }
 
 export function buildTripMapPoints(
   trip: Trip,
   days: ItineraryDay[],
-): { points: TripMapPoint[]; unmappedStops: string[] } {
+): {
+  points: TripMapPoint[];
+  unmappedStops: string[];
+  returnsToStart: boolean;
+} {
+  const returnsToStart = itineraryReturnsToStart(trip, days);
+  const stays = stayPointsFromDays(days);
   const raw: RawPoint[] = [];
 
-  if (
-    trip.starting_location_lat != null &&
-    trip.starting_location_lng != null
-  ) {
-    pushPoint(raw, {
-      id: "start",
-      label: trip.starting_location?.trim() || "Start",
-      lat: trip.starting_location_lat,
-      lng: trip.starting_location_lng,
-      kind: "start",
-      placeId: trip.starting_location_place_id ?? undefined,
-    });
-  }
-
-  for (const day of days) {
-    if (day.stay_location_lat != null && day.stay_location_lng != null) {
-      const label =
-        day.stay_location?.trim() ||
-        day.stay_name?.trim() ||
-        `Day ${day.day_number} stay`;
-      pushPoint(raw, {
-        id: `stay-${day.id}`,
-        label,
-        lat: day.stay_location_lat,
-        lng: day.stay_location_lng,
-        kind: "stay",
-        dayNumber: day.day_number,
-        placeId: day.stay_location_place_id ?? undefined,
+  const start = startRawPoint(trip);
+  if (start) {
+    const firstStay = stays[0];
+    if (
+      firstStay &&
+      sameLocation(
+        {
+          placeId: start.placeId,
+          label: start.label,
+          lat: start.lat,
+          lng: start.lng,
+        },
+        {
+          placeId: firstStay.placeId,
+          label: firstStay.label,
+          lat: firstStay.lat,
+          lng: firstStay.lng,
+        },
+      )
+    ) {
+      raw.push({
+        ...firstStay,
+        kind: "start",
+        label: start.label,
       });
+      raw.push(...stays.slice(1));
+    } else {
+      raw.push(start);
+      raw.push(...stays);
     }
+  } else {
+    raw.push(...stays);
   }
 
-  if (trip.destination_lat != null && trip.destination_lng != null) {
-    pushPoint(raw, {
-      id: "destination",
-      label: trip.destination?.trim() || "Destination",
-      lat: trip.destination_lat,
-      lng: trip.destination_lng,
-      kind: "destination",
-      placeId: trip.destination_place_id ?? undefined,
-    });
+  if (!returnsToStart) {
+    const dest = destinationRawPoint(trip);
+    if (dest && !pointExists(raw, destinationIdentity(trip))) {
+      raw.push(dest);
+    }
   }
 
   const points: TripMapPoint[] = raw.map((p, index) => ({
@@ -77,7 +188,7 @@ export function buildTripMapPoints(
     (stop) => !mappedLabels.has(stop.trim().toLowerCase()),
   );
 
-  return { points, unmappedStops };
+  return { points, unmappedStops, returnsToStart };
 }
 
 export async function resolveTripMapCoordinates(
@@ -152,9 +263,17 @@ export function filterMarkersForDay(
   points: TripMapPoint[],
   dayNumber: number,
   totalDays: number,
+  returnsToStart = false,
 ): TripMapPoint[] {
   return points.filter((p) => {
     if (p.kind === "start" && dayNumber === 1) return true;
+    if (
+      returnsToStart &&
+      p.kind === "start" &&
+      dayNumber === totalDays
+    ) {
+      return true;
+    }
     if (p.kind === "destination" && dayNumber === totalDays) return true;
     if (p.kind === "stay" && p.dayNumber === dayNumber) return true;
     return false;
@@ -167,11 +286,32 @@ export function routeWaypointsForView(
   mode: "all" | "day",
   dayNumber: number | null,
   totalDays: number,
+  returnsToStart = false,
 ): TripMapPoint[] {
   if (points.length === 0) return [];
   if (mode === "all") return points;
 
   const day = dayNumber ?? 1;
+  const startPoint = points.find((p) => p.kind === "start");
+
+  if (day === totalDays && returnsToStart && startPoint) {
+    const stayForDay = points.find(
+      (p) => p.kind === "stay" && p.dayNumber === day,
+    );
+    if (stayForDay) {
+      const stayIndex = points.findIndex((p) => p.id === stayForDay.id);
+      if (stayIndex > 0) {
+        return [points[stayIndex - 1], startPoint];
+      }
+      return [startPoint];
+    }
+    const lastStay = [...points].reverse().find((p) => p.kind === "stay");
+    if (lastStay && lastStay.id !== startPoint.id) {
+      return [lastStay, startPoint];
+    }
+    return [startPoint];
+  }
+
   const stayForDay = points.find(
     (p) => p.kind === "stay" && p.dayNumber === day,
   );
@@ -197,5 +337,5 @@ export function routeWaypointsForView(
     return prev ? [prev, dest] : [dest];
   }
 
-  return filterMarkersForDay(points, day, totalDays);
+  return filterMarkersForDay(points, day, totalDays, returnsToStart);
 }
