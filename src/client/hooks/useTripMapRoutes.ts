@@ -8,7 +8,9 @@ import {
 const routeCache = new Map<string, RouteLegResult[]>();
 
 function cacheKey(waypoints: TripMapPoint[]): string {
-  return waypoints.map((p) => `${p.lat},${p.lng}`).join("->");
+  return waypoints
+    .map((p) => p.placeId ?? `${p.lat},${p.lng}`)
+    .join("->");
 }
 
 export type TripMapRoutesState = {

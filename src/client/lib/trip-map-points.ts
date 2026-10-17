@@ -259,6 +259,32 @@ export async function resolveTripMapCoordinates(
   return { trip: nextTrip, days: nextDays };
 }
 
+function locationFromPoint(point: TripMapPoint): LocationIdentity {
+  return {
+    placeId: point.placeId,
+    label: point.label,
+    lat: point.lat,
+    lng: point.lng,
+  };
+}
+
+/** Collapse consecutive waypoints at the same physical place (not global dedupe). */
+export function collapseConsecutiveSameLocationWaypoints(
+  waypoints: TripMapPoint[],
+): TripMapPoint[] {
+  if (waypoints.length === 0) return [];
+  const collapsed: TripMapPoint[] = [waypoints[0]];
+  for (let i = 1; i < waypoints.length; i++) {
+    const prev = collapsed[collapsed.length - 1];
+    const curr = waypoints[i];
+    if (sameLocation(locationFromPoint(prev), locationFromPoint(curr))) {
+      continue;
+    }
+    collapsed.push(curr);
+  }
+  return collapsed;
+}
+
 export function filterMarkersForDay(
   points: TripMapPoint[],
   dayNumber: number,
@@ -289,53 +315,59 @@ export function routeWaypointsForView(
   returnsToStart = false,
 ): TripMapPoint[] {
   if (points.length === 0) return [];
-  if (mode === "all") return points;
 
-  const day = dayNumber ?? 1;
-  const startPoint = points.find((p) => p.kind === "start");
+  let raw: TripMapPoint[];
+  if (mode === "all") {
+    raw = points;
+  } else {
+    const day = dayNumber ?? 1;
+    const startPoint = points.find((p) => p.kind === "start");
 
-  if (day === totalDays && returnsToStart && startPoint) {
-    const stayForDay = points.find(
-      (p) => p.kind === "stay" && p.dayNumber === day,
-    );
-    if (stayForDay) {
-      const stayIndex = points.findIndex((p) => p.id === stayForDay.id);
-      if (stayIndex > 0) {
-        return [points[stayIndex - 1], startPoint];
+    if (day === totalDays && returnsToStart && startPoint) {
+      const stayForDay = points.find(
+        (p) => p.kind === "stay" && p.dayNumber === day,
+      );
+      if (stayForDay) {
+        const stayIndex = points.findIndex((p) => p.id === stayForDay.id);
+        if (stayIndex > 0) {
+          raw = [points[stayIndex - 1], startPoint];
+        } else {
+          raw = [startPoint];
+        }
+      } else {
+        const lastStay = [...points].reverse().find((p) => p.kind === "stay");
+        if (lastStay && lastStay.id !== startPoint.id) {
+          raw = [lastStay, startPoint];
+        } else {
+          raw = [startPoint];
+        }
       }
-      return [startPoint];
+    } else {
+      const stayForDay = points.find(
+        (p) => p.kind === "stay" && p.dayNumber === day,
+      );
+      const stayIndex = stayForDay
+        ? points.findIndex((p) => p.id === stayForDay.id)
+        : -1;
+
+      if (stayIndex > 0) {
+        raw = [points[stayIndex - 1], points[stayIndex]];
+      } else if (stayIndex === 0) {
+        raw = [points[0]];
+      } else if (day === 1 && points[0]?.kind === "start") {
+        raw = [points[0]];
+      } else if (
+        day === totalDays &&
+        points[points.length - 1]?.kind === "destination"
+      ) {
+        const dest = points[points.length - 1];
+        const prev = points[points.length - 2];
+        raw = prev ? [prev, dest] : [dest];
+      } else {
+        raw = filterMarkersForDay(points, day, totalDays, returnsToStart);
+      }
     }
-    const lastStay = [...points].reverse().find((p) => p.kind === "stay");
-    if (lastStay && lastStay.id !== startPoint.id) {
-      return [lastStay, startPoint];
-    }
-    return [startPoint];
   }
 
-  const stayForDay = points.find(
-    (p) => p.kind === "stay" && p.dayNumber === day,
-  );
-  const stayIndex = stayForDay
-    ? points.findIndex((p) => p.id === stayForDay.id)
-    : -1;
-
-  if (stayIndex > 0) {
-    return [points[stayIndex - 1], points[stayIndex]];
-  }
-
-  if (stayIndex === 0) {
-    return [points[0]];
-  }
-
-  if (day === 1 && points[0]?.kind === "start") {
-    return [points[0]];
-  }
-
-  if (day === totalDays && points[points.length - 1]?.kind === "destination") {
-    const dest = points[points.length - 1];
-    const prev = points[points.length - 2];
-    return prev ? [prev, dest] : [dest];
-  }
-
-  return filterMarkersForDay(points, day, totalDays, returnsToStart);
+  return collapseConsecutiveSameLocationWaypoints(raw);
 }

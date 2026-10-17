@@ -77,7 +77,10 @@ function day(
 
 const PLACE = {
   chennai: "ChIJchennai",
+  coimbatore: "ChIJcoimbatore",
+  munnar: "ChIJmunnar",
   kumarakom: "ChIJkumarakom",
+  madurai: "ChIJmadurai",
   salem: "ChIJsalem",
   gavi: "ChIJgavi",
   repeat: "ChIJrepeat",
@@ -238,5 +241,180 @@ describe("buildTripMapPoints", () => {
     assert.equal(points.length, 2);
     assert.equal(points[0]?.dayNumber, 2);
     assert.equal(points[1]?.dayNumber, 3);
+  });
+});
+
+describe("collapseConsecutiveSameLocationWaypoints", () => {
+  it("removes zero-distance legs between consecutive same-place stays", () => {
+    const trip = baseTrip();
+    const days = [
+      day(2, {
+        stay_location: "Munnar",
+        stay_location_place_id: PLACE.munnar,
+        stay_location_lat: 10.09,
+        stay_location_lng: 77.06,
+      }),
+      day(3, {
+        stay_location: "Munnar",
+        stay_location_place_id: PLACE.munnar,
+        stay_location_lat: 10.09,
+        stay_location_lng: 77.06,
+      }),
+      day(4, {
+        stay_location: "Kumarakom",
+        stay_location_place_id: PLACE.kumarakom,
+        stay_location_lat: 9.62,
+        stay_location_lng: 76.43,
+      }),
+      day(5, {
+        stay_location: "Kumarakom",
+        stay_location_place_id: PLACE.kumarakom,
+        stay_location_lat: 9.62,
+        stay_location_lng: 76.43,
+      }),
+    ];
+
+    const { points } = buildTripMapPoints(trip, days);
+    assert.equal(points.length, 4);
+
+    const route = routeWaypointsForView(points, "all", null, 5, false);
+    assert.equal(route.length, 2);
+    assert.equal(route[0]?.label, "Munnar");
+    assert.equal(route[1]?.label, "Kumarakom");
+  });
+
+  it("preserves distinct consecutive destinations in a long loop", () => {
+    const trip = baseTrip({
+      starting_location: "Chennai",
+      starting_location_place_id: PLACE.chennai,
+      starting_location_lat: 13.08,
+      starting_location_lng: 80.27,
+      destination: "Madurai",
+      destination_place_id: PLACE.madurai,
+      destination_lat: 9.93,
+      destination_lng: 78.12,
+    });
+    const days = [
+      day(1, {
+        stay_location: "Coimbatore",
+        stay_location_place_id: PLACE.coimbatore,
+        stay_location_lat: 11.02,
+        stay_location_lng: 76.96,
+      }),
+      day(2, {
+        stay_location: "Munnar",
+        stay_location_place_id: PLACE.munnar,
+        stay_location_lat: 10.09,
+        stay_location_lng: 77.06,
+      }),
+      day(3, {
+        stay_location: "Kumarakom",
+        stay_location_place_id: PLACE.kumarakom,
+        stay_location_lat: 9.62,
+        stay_location_lng: 76.43,
+      }),
+      day(4, {
+        stay_location: "Madurai",
+        stay_location_place_id: PLACE.madurai,
+        stay_location_lat: 9.93,
+        stay_location_lng: 78.12,
+      }),
+    ];
+
+    const { points, returnsToStart } = buildTripMapPoints(trip, days);
+    const route = routeWaypointsForView(points, "all", null, 4, returnsToStart);
+    assert.deepEqual(
+      route.map((p) => p.label),
+      ["Chennai", "Coimbatore", "Munnar", "Kumarakom", "Madurai"],
+    );
+  });
+
+  it("keeps a later revisit after visiting other places", () => {
+    const trip = baseTrip();
+    const days = [
+      day(1, {
+        stay_location: "Munnar",
+        stay_location_place_id: PLACE.munnar,
+        stay_location_lat: 10.09,
+        stay_location_lng: 77.06,
+      }),
+      day(2, {
+        stay_location: "Kumarakom",
+        stay_location_place_id: PLACE.kumarakom,
+        stay_location_lat: 9.62,
+        stay_location_lng: 76.43,
+      }),
+      day(3, {
+        stay_location: "Munnar",
+        stay_location_place_id: PLACE.munnar,
+        stay_location_lat: 10.09,
+        stay_location_lng: 77.06,
+      }),
+    ];
+
+    const { points } = buildTripMapPoints(trip, days);
+    const route = routeWaypointsForView(points, "all", null, 3, false);
+    assert.deepEqual(
+      route.map((p) => p.label),
+      ["Munnar", "Kumarakom", "Munnar"],
+    );
+  });
+
+  it("does not create a same-location leg on a multi-night day view", () => {
+    const trip = baseTrip();
+    const days = [
+      day(2, {
+        stay_location: "Gavi",
+        stay_location_place_id: PLACE.gavi,
+        stay_location_lat: 9.34,
+        stay_location_lng: 77.14,
+      }),
+      day(3, {
+        stay_location: "Gavi",
+        stay_location_place_id: PLACE.gavi,
+        stay_location_lat: 9.34,
+        stay_location_lng: 77.14,
+      }),
+    ];
+
+    const { points } = buildTripMapPoints(trip, days);
+    const day3Route = routeWaypointsForView(points, "day", 3, 3, false);
+    assert.equal(day3Route.length, 1);
+    assert.equal(day3Route[0]?.label, "Gavi");
+  });
+});
+
+describe("return-to-origin route waypoints", () => {
+  it("routes Salem to Chennai on the final day without duplicate stops", () => {
+    const trip = baseTrip({
+      starting_location: "Chennai",
+      starting_location_place_id: PLACE.chennai,
+      starting_location_lat: 13.08,
+      starting_location_lng: 80.27,
+    });
+    const days = [
+      day(7, {
+        stay_location: "Salem",
+        stay_location_place_id: PLACE.salem,
+        stay_location_lat: 11.66,
+        stay_location_lng: 78.15,
+      }),
+      day(8, {
+        to_location: "Chennai",
+      }),
+    ];
+
+    const { points, returnsToStart } = buildTripMapPoints(trip, days);
+    const allRoute = routeWaypointsForView(points, "all", null, 8, returnsToStart);
+    assert.deepEqual(
+      allRoute.map((p) => p.label),
+      ["Chennai", "Salem"],
+    );
+
+    const lastDay = routeWaypointsForView(points, "day", 8, 8, returnsToStart);
+    assert.deepEqual(
+      lastDay.map((p) => p.label),
+      ["Salem", "Chennai"],
+    );
   });
 });

@@ -109,12 +109,12 @@ export function TripMapView({ trip, days }: Props) {
   );
 
   const directionsUrl = useMemo(() => {
-    const coords = (scope === "all" ? points : routeWaypoints).map((p) => ({
+    const coords = routeWaypoints.map((p) => ({
       lat: p.lat,
       lng: p.lng,
     }));
     return googleMapsDirectionsUrl(coords);
-  }, [scope, points, routeWaypoints]);
+  }, [routeWaypoints]);
 
   useEffect(() => {
     if (!mapsConfigured || !mapContainerRef.current) return;
@@ -284,7 +284,7 @@ export function TripMapView({ trip, days }: Props) {
           </button>
         </div>
 
-        {directionsUrl && points.length >= 2 && (
+        {directionsUrl && routeWaypoints.length >= 2 && (
           <a
             href={directionsUrl}
             target="_blank"
