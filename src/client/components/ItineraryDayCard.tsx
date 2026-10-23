@@ -19,6 +19,8 @@ type Props = {
   expenseAmount: number | null;
   budgetHandlers: DayBudgetHandlers;
   onEditDay: () => void;
+  /** Highlighted when selected in the day selector. */
+  active?: boolean;
 };
 
 export function ItineraryDayCard({
@@ -27,6 +29,7 @@ export function ItineraryDayCard({
   expenseAmount,
   budgetHandlers,
   onEditDay,
+  active = false,
 }: Props) {
   const from = day.from_location?.trim() ?? "";
   const to = day.to_location?.trim() ?? "";
@@ -56,13 +59,20 @@ export function ItineraryDayCard({
     (day.notes && !hasTravel);
 
   return (
-    <article className="card flex overflow-hidden">
+    <article
+      id={`day-${day.id}`}
+      aria-current={active ? "true" : undefined}
+      className={`card grid scroll-mt-24 overflow-hidden transition lg:grid-cols-[minmax(0,1fr)_23rem] ${
+        active ? "!border-teal-500 ring-2 ring-teal-500/30" : ""
+      }`}
+    >
+      <div className="flex min-w-0">
       <PlaceLocationImage
         photo_name={day.stay_location_photo_name}
         place_id={day.stay_location_place_id}
-        className="w-[4.25rem] shrink-0 self-stretch sm:w-24"
-        imgClassName="h-full min-h-[5.5rem] w-full object-cover sm:min-h-[6rem]"
-        maxWidthPx={400}
+        className="w-28 shrink-0 self-stretch sm:w-40 lg:w-52"
+        imgClassName="h-full min-h-[10rem] w-full object-cover"
+        maxWidthPx={600}
       />
       <div className="min-w-0 flex-1 p-4 sm:p-5">
       <header className="flex items-start justify-between gap-3">
@@ -144,25 +154,24 @@ export function ItineraryDayCard({
         </div>
       )}
 
-      <div className="mt-3 text-sm">
-        <Section title="Stay" icon="🏨">
-          <StayInline
-            dayId={day.id}
-            stayName={stayName}
-            stayLocation={stayLocation}
-            stayExpense={stayExpense}
-            handlers={budgetHandlers}
-          />
-        </Section>
+      <div className="mt-4 text-sm">
+        <StayInline
+          dayId={day.id}
+          stayName={stayName}
+          stayLocation={stayLocation}
+          stayExpense={stayExpense}
+          handlers={budgetHandlers}
+        />
       </div>
 
+      </div>
+      </div>
       <DayExpenseSection
         dayId={day.id}
         expenses={listedExpenses}
         handlers={budgetHandlers}
         dayTotal={expenseAmount}
       />
-      </div>
     </article>
   );
 }

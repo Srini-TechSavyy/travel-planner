@@ -12,7 +12,12 @@ import { TripCoverImage } from "../components/TripCoverImage";
 import { TripMapView } from "../components/TripMapView";
 import { useAuth } from "../hooks/useAuth";
 import { useTripBundle } from "../hooks/useTripBundle";
-import { displayDayExpenseAmount, displayTripBudgetTotal } from "../lib/budget";
+import {
+  dayExpenseTotal,
+  displayDayExpenseAmount,
+  displayTripBudgetTotal,
+  sharedExpenseTotal,
+} from "../lib/budget";
 import {
   deleteDraftTrip,
   draftToImportPayload,
@@ -54,6 +59,35 @@ export function TripItineraryPage() {
   const [pageError, setPageError] = useState<string | null>(null);
   const saveInFlightRef = useRef(false);
   const [pageView, setPageView] = useState<"itinerary" | "map">("itinerary");
+  const [activeDayId, setActiveDayId] = useState<string | null>(null);
+  const dayIdsKey = bundle.days.map((d) => d.id).join(",");
+
+  // Highlight the day card currently in view while scrolling.
+  useEffect(() => {
+    if (pageView !== "itinerary" || !dayIdsKey) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setActiveDayId(entry.target.id.replace(/^day-/, ""));
+          }
+        }
+      },
+      { rootMargin: "-15% 0px -65% 0px" },
+    );
+    for (const id of dayIdsKey.split(",")) {
+      const el = document.getElementById(`day-${id}`);
+      if (el) observer.observe(el);
+    }
+    return () => observer.disconnect();
+  }, [dayIdsKey, pageView]);
+
+  function handleSelectDay(dayId: string) {
+    setActiveDayId(dayId);
+    document
+      .getElementById(`day-${dayId}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   useEffect(() => {
     if (searchParams.get("saved") === "1") {
@@ -171,6 +205,17 @@ export function TripItineraryPage() {
   const routeLabel = formatRoute(routeStops);
   const dayCount = tripDayCount(trip.start_date, trip.end_date);
   const budgetTotal = displayTripBudgetTotal(bundle.expenses, days);
+  const sharedTotal = sharedExpenseTotal(bundle.expenses);
+  const daysTotal = dayExpenseTotal(bundle.expenses);
+  const costByDayId: Record<string, number | null> = {};
+  for (const d of days) {
+    costByDayId[d.id] = displayDayExpenseAmount(
+      d,
+      bundle.expenses,
+      bundle.expenseSummary,
+    );
+  }
+  const currentDayId = activeDayId ?? days[0]?.id ?? null;
 
   const saveButtonLabel = tripSaveDone
     ? "Saved"
@@ -179,7 +224,7 @@ export function TripItineraryPage() {
       : "Save Trip";
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
+    <div className="mx-auto max-w-6xl px-4 py-8">
       <Link
         to="/"
         className="text-sm font-medium text-teal-700 hover:underline"
@@ -246,6 +291,11 @@ export function TripItineraryPage() {
               {formatInr(budgetTotal)}
             </span>
           )}
+          {sharedTotal > 0 && (
+            <span className="text-xs text-teal-800/80">
+              Days {formatInr(daysTotal)} · Shared {formatInr(sharedTotal)}
+            </span>
+          )}
         </button>
       </div>
 
@@ -292,22 +342,24 @@ export function TripItineraryPage() {
         <>
           {days.length > 0 && (
             <div className="mt-8">
-              <ItineraryDaySummaryRow days={days} />
+              <ItineraryDaySummaryRow
+                days={days}
+                activeDayId={currentDayId}
+                costByDayId={costByDayId}
+                onSelectDay={handleSelectDay}
+              />
             </div>
           )}
 
           <div className="mt-4 space-y-4">
             {days.map((day) => {
-              const expenseAmount = displayDayExpenseAmount(
-                day,
-                bundle.expenses,
-                bundle.expenseSummary,
-              );
+              const expenseAmount = costByDayId[day.id] ?? null;
               const dayId = day.id;
               return (
                 <ItineraryDayCard
                   key={day.id}
                   day={day}
+                  active={day.id === currentDayId}
                   dayExpenses={bundle.expenses.filter((e) => e.day_id === dayId)}
                   expenseAmount={expenseAmount}
                   budgetHandlers={{

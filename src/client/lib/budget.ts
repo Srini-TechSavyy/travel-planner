@@ -136,3 +136,13 @@ export const dayTotal = dayTotalLegacy;
 export const hasDayBudget = hasDayBudgetLegacy;
 export const tripTotals = tripTotalsLegacy;
 export const hasAnyTripBudget = hasAnyTripBudgetLegacy;
+
+/** Sum of expenses not assigned to a day (fuel, tolls, parking, …). */
+export function sharedExpenseTotal(expenses: TripExpense[]): number {
+  return expenses.filter((e) => !e.day_id).reduce((s, e) => s + e.amount, 0);
+}
+
+/** Sum of expenses assigned to any day. */
+export function dayExpenseTotal(expenses: TripExpense[]): number {
+  return expenses.filter((e) => e.day_id).reduce((s, e) => s + e.amount, 0);
+}

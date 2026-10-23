@@ -3,11 +3,8 @@ import {
   EXPENSE_CATEGORIES,
   EXPENSE_CATEGORY_ICONS,
   EXPENSE_CATEGORY_LABELS,
-  EXPENSE_TYPE_LABELS,
   EXPENSE_TYPES_BY_CATEGORY,
-  isExpenseTypeForCategory,
   type ExpenseCategory,
-  type ExpenseType,
 } from "../../shared/expenses";
 import type { TripExpense } from "../../shared/types";
 import type { DraftExpenseInput } from "../lib/draft-trips";
@@ -38,15 +35,41 @@ function parseAmount(raw: string): { value: number } | { error: string } {
   return { value: n };
 }
 
-function typeLabel(expense: TripExpense): string {
+/* ------------------------------------------------------------------ */
+/* Icons                                                               */
+/* ------------------------------------------------------------------ */
+
+function Icon({ d, className = "h-4 w-4" }: { d: string; className?: string }) {
   return (
-    EXPENSE_TYPE_LABELS[expense.expense_type as ExpenseType] ??
-    expense.expense_type
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d={d} />
+    </svg>
   );
 }
 
+const PENCIL = "M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z";
+const TRASH =
+  "M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0v14a1 1 0 01-1 1H7a1 1 0 01-1-1V6h12zM10 11v6M14 11v6";
+const CHECK = "M20 6L9 17l-5-5";
+const CLOSE = "M18 6L6 18M6 6l12 12";
+const PLUS = "M12 5v14M5 12h14";
+const CALC =
+  "M6 3h12a1 1 0 011 1v16a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1zM8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01";
+
+const iconBtn =
+  "inline-flex h-7 w-7 items-center justify-center rounded-md transition disabled:opacity-50";
+
 /* ------------------------------------------------------------------ */
-/* Expense section                                                     */
+/* Expense panel                                                       */
 /* ------------------------------------------------------------------ */
 
 type ExpenseSectionProps = {
@@ -68,22 +91,22 @@ export function DayExpenseSection({
   return (
     <section
       aria-label="Day expenses"
-      className="mt-4 border-t border-slate-100 pt-3"
+      className="flex h-full flex-col gap-2 border-t border-slate-200 bg-slate-50/50 p-4 lg:border-l lg:border-t-0"
     >
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium text-slate-700">💰 Expenses</p>
+        <h4 className="text-sm font-semibold text-slate-900">Day Expenses</h4>
         {!adding && (
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="rounded-lg px-2 py-1 text-xs font-medium text-teal-700 hover:bg-teal-50"
+            className="inline-flex items-center gap-1 rounded-lg border border-teal-300 bg-white px-2.5 py-1 text-xs font-medium text-teal-700 transition hover:bg-teal-50"
           >
-            + Add Expense
+            <Icon d={PLUS} className="h-3.5 w-3.5" /> Add Expense
           </button>
         )}
       </div>
 
-      <ul className="mt-1 divide-y divide-slate-100">
+      <ul className="divide-y divide-slate-200 rounded-lg bg-white px-2 ring-1 ring-slate-200">
         {expenses.map((expense) => (
           <ExpenseRow key={expense.id} expense={expense} handlers={handlers} />
         ))}
@@ -93,22 +116,30 @@ export function DayExpenseSection({
               initial={null}
               onCancel={() => setAdding(false)}
               onSave={async (values) => {
-                await handlers.onCreateExpense({ ...values, day_id: dayId });
+                await handlers.onCreateExpense({
+                  category: values.category,
+                  expense_type: EXPENSE_TYPES_BY_CATEGORY[values.category][0],
+                  amount: values.amount,
+                  day_id: dayId,
+                });
                 setAdding(false);
               }}
             />
           </li>
         )}
+        {expenses.length === 0 && !adding && (
+          <li className="py-3 text-center text-xs text-slate-500">
+            No expenses yet.
+          </li>
+        )}
       </ul>
 
-      {expenses.length === 0 && !adding && (
-        <p className="py-1 text-xs text-slate-500">No expenses yet.</p>
-      )}
-
-      <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-2 text-sm">
-        <span className="font-medium text-slate-600">Daily estimated total</span>
+      <div className="mt-auto flex items-center justify-between rounded-lg bg-teal-50 px-3 py-2.5 ring-1 ring-teal-100">
+        <span className="flex items-center gap-2 text-sm font-semibold text-teal-900">
+          <Icon d={CALC} className="h-4 w-4 text-teal-700" /> Daily Total
+        </span>
         <span
-          className="font-semibold tabular-nums text-teal-800"
+          className="text-lg font-bold tabular-nums text-teal-800"
           data-testid="day-total"
         >
           {formatInr(dayTotal ?? 0)}
@@ -125,24 +156,12 @@ function ExpenseRow({
   expense: TripExpense;
   handlers: DayBudgetHandlers;
 }) {
-  const [editing, setEditing] = useState<"type" | "amount" | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    function onDown(e: MouseEvent) {
-      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
-    }
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [menuOpen]);
 
   async function handleDelete() {
-    setMenuOpen(false);
-    if (!window.confirm("Delete this expense?")) return;
     setBusy(true);
     setError(null);
     try {
@@ -150,6 +169,7 @@ function ExpenseRow({
     } catch {
       setError("Unable to delete expense. Please try again.");
       setBusy(false);
+      setConfirming(false);
     }
   }
 
@@ -158,11 +178,20 @@ function ExpenseRow({
       <li className="py-2">
         <ExpenseEditor
           initial={expense}
-          focus={editing}
-          onCancel={() => setEditing(null)}
+          onCancel={() => setEditing(false)}
           onSave={async (values) => {
-            await handlers.onUpdateExpense(expense.id, values);
-            setEditing(null);
+            const categoryChanged = values.category !== expense.category;
+            await handlers.onUpdateExpense(
+              expense.id,
+              categoryChanged
+                ? {
+                    category: values.category,
+                    expense_type: EXPENSE_TYPES_BY_CATEGORY[values.category][0],
+                    amount: values.amount,
+                  }
+                : { amount: values.amount },
+            );
+            setEditing(false);
           }}
         />
       </li>
@@ -173,135 +202,105 @@ function ExpenseRow({
   return (
     <li className={`py-1.5 ${busy ? "opacity-50" : ""}`}>
       <div className="flex items-center gap-2 text-sm">
-        <button
-          type="button"
-          onClick={() => setEditing("type")}
-          disabled={busy}
-          title="Click to edit"
-          className="min-w-0 flex-1 truncate rounded px-1 py-0.5 text-left text-slate-800 hover:bg-slate-50"
+        <span
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100"
+          aria-hidden
         >
-          <span aria-hidden>{EXPENSE_CATEGORY_ICONS[cat] ?? "📦"}</span>{" "}
-          {typeLabel(expense)}
-          {expense.notes && (
-            <span className="ml-1 text-xs text-slate-500">
-              · {expense.notes}
-            </span>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => setEditing("amount")}
-          disabled={busy}
-          title="Click to edit"
-          className="shrink-0 rounded px-1 py-0.5 font-semibold tabular-nums text-slate-900 hover:bg-slate-50"
-        >
-          {formatInr(expense.amount)}
-        </button>
-        <div className="relative shrink-0" ref={menuRef}>
-          <button
-            type="button"
-            aria-label="Expense actions"
-            aria-haspopup="menu"
-            aria-expanded={menuOpen}
-            disabled={busy}
-            onClick={() => setMenuOpen((o) => !o)}
-            className="rounded px-1.5 py-0.5 text-slate-500 hover:bg-slate-100"
-          >
-            ⋯
-          </button>
-          {menuOpen && (
-            <div
-              role="menu"
-              className="absolute right-0 z-10 mt-1 w-28 rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-lg"
+          {EXPENSE_CATEGORY_ICONS[cat] ?? "📦"}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-slate-800">
+          {EXPENSE_CATEGORY_LABELS[cat] ?? expense.category}
+        </span>
+        {confirming ? (
+          <span className="flex shrink-0 items-center gap-1.5 text-xs">
+            <span className="text-slate-600">Delete?</span>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void handleDelete()}
+              className="rounded-md bg-red-600 px-2 py-1 font-medium text-white hover:bg-red-700 disabled:opacity-60"
             >
-              <button
-                type="button"
-                role="menuitem"
-                className="block w-full px-3 py-1.5 text-left text-slate-700 hover:bg-slate-50"
-                onClick={() => {
-                  setMenuOpen(false);
-                  setEditing("type");
-                }}
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className="block w-full px-3 py-1.5 text-left text-red-700 hover:bg-red-50"
-                onClick={() => void handleDelete()}
-              >
-                Delete
-              </button>
-            </div>
-          )}
-        </div>
+              Yes
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setConfirming(false)}
+              className="rounded-md border border-slate-200 px-2 py-1 font-medium text-slate-700 hover:bg-slate-50"
+            >
+              No
+            </button>
+          </span>
+        ) : (
+          <>
+            <span className="shrink-0 font-semibold tabular-nums text-slate-900">
+              {formatInr(expense.amount)}
+            </span>
+            <button
+              type="button"
+              aria-label="Edit expense"
+              disabled={busy}
+              onClick={() => setEditing(true)}
+              className={`${iconBtn} text-slate-500 hover:bg-slate-100 hover:text-teal-700`}
+            >
+              <Icon d={PENCIL} />
+            </button>
+            <button
+              type="button"
+              aria-label="Delete expense"
+              disabled={busy}
+              onClick={() => setConfirming(true)}
+              className={`${iconBtn} text-red-500 hover:bg-red-50`}
+            >
+              <Icon d={TRASH} />
+            </button>
+          </>
+        )}
       </div>
       {error && <p className="mt-1 text-xs text-red-700">{error}</p>}
     </li>
   );
 }
 
-type EditorValues = {
-  category: ExpenseCategory;
-  expense_type: string;
-  amount: number;
-  notes: string | null;
-};
+type EditorValues = { category: ExpenseCategory; amount: number };
 
 function ExpenseEditor({
   initial,
-  focus = "type",
   onSave,
   onCancel,
 }: {
   initial: TripExpense | null;
-  focus?: "type" | "amount";
   onSave: (values: EditorValues) => Promise<void>;
   onCancel: () => void;
 }) {
-  const initCategory = (initial?.category as ExpenseCategory) ?? "food";
-  const [category, setCategory] = useState<ExpenseCategory>(initCategory);
-  const [expenseType, setExpenseType] = useState<string>(
-    initial?.expense_type ?? EXPENSE_TYPES_BY_CATEGORY[initCategory][0],
+  const [category, setCategory] = useState<ExpenseCategory | "">(
+    (initial?.category as ExpenseCategory) ?? "",
   );
-  const [amount, setAmount] = useState(
-    initial ? String(initial.amount) : "",
-  );
-  const [notes, setNotes] = useState(initial?.notes ?? "");
+  const [amount, setAmount] = useState(initial ? String(initial.amount) : "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const typeRef = useRef<HTMLSelectElement>(null);
-  const amountRef = useRef<HTMLInputElement>(null);
+  const categoryRef = useRef<HTMLSelectElement>(null);
 
   useEffect(() => {
-    (focus === "amount" ? amountRef : typeRef).current?.focus();
-  }, [focus]);
-
-  function changeCategory(next: ExpenseCategory) {
-    setCategory(next);
-    if (!isExpenseTypeForCategory(next, expenseType)) {
-      setExpenseType(EXPENSE_TYPES_BY_CATEGORY[next][0]);
-    }
-  }
+    categoryRef.current?.focus();
+  }, []);
 
   async function save() {
     if (saving) return;
+    if (!category) {
+      setError("Select a category.");
+      categoryRef.current?.focus();
+      return;
+    }
     const parsed = parseAmount(amount);
     if ("error" in parsed) {
       setError(parsed.error);
-      amountRef.current?.focus();
       return;
     }
     setSaving(true);
     setError(null);
     try {
-      await onSave({
-        category,
-        expense_type: expenseType,
-        amount: parsed.value,
-        notes: notes.trim() ? notes.trim() : null,
-      });
+      await onSave({ category, amount: parsed.value });
     } catch {
       setError("Unable to save expense. Please try again.");
       setSaving(false);
@@ -319,83 +318,58 @@ function ExpenseEditor({
   }
 
   return (
-    <div
-      className="space-y-2 rounded-lg border border-teal-200 bg-teal-50/40 p-2 text-sm"
-      onKeyDown={onKeyDown}
-    >
-      <div className="grid grid-cols-2 gap-2">
+    <div onKeyDown={onKeyDown}>
+      <div className="flex items-center gap-1.5">
         <select
+          ref={categoryRef}
           aria-label="Category"
           value={category}
-          onChange={(e) => changeCategory(e.target.value as ExpenseCategory)}
+          onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
           disabled={saving}
-          className="input !py-1.5 text-sm"
+          className="input min-w-0 flex-1 !px-2 !py-1.5 text-sm"
         >
+          <option value="" disabled>
+            Select category
+          </option>
           {EXPENSE_CATEGORIES.map((c) => (
             <option key={c} value={c}>
               {EXPENSE_CATEGORY_ICONS[c]} {EXPENSE_CATEGORY_LABELS[c]}
             </option>
           ))}
         </select>
-        <select
-          ref={typeRef}
-          aria-label="Expense description"
-          value={expenseType}
-          onChange={(e) => setExpenseType(e.target.value)}
-          disabled={saving}
-          className="input !py-1.5 text-sm"
-        >
-          {EXPENSE_TYPES_BY_CATEGORY[category].map((t) => (
-            <option key={t} value={t}>
-              {EXPENSE_TYPE_LABELS[t]}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="grid grid-cols-[8rem_1fr] gap-2">
         <input
-          ref={amountRef}
           aria-label="Amount in INR"
           inputMode="numeric"
-          placeholder="₹ Amount"
+          placeholder="Amount"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           disabled={saving}
-          className="input !py-1.5 text-sm tabular-nums"
+          className="input w-24 !px-2 !py-1.5 text-sm tabular-nums"
         />
-        <input
-          aria-label="Notes"
-          placeholder="Notes (optional)"
-          maxLength={2000}
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+        <button
+          type="button"
+          aria-label="Save expense"
+          onClick={() => void save()}
           disabled={saving}
-          className="input !py-1.5 text-sm"
-        />
+          className={`${iconBtn} h-8 w-8 bg-teal-600 text-white hover:bg-teal-700`}
+        >
+          <Icon d={CHECK} />
+        </button>
+        <button
+          type="button"
+          aria-label="Cancel"
+          onClick={onCancel}
+          disabled={saving}
+          className={`${iconBtn} h-8 w-8 border border-slate-200 text-slate-600 hover:bg-slate-100`}
+        >
+          <Icon d={CLOSE} />
+        </button>
       </div>
       {error && (
-        <p role="alert" className="text-xs text-red-700">
+        <p role="alert" className="mt-1 text-xs text-red-700">
           {error}
         </p>
       )}
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => void save()}
-          disabled={saving}
-          className="btn-primary !px-3 !py-1 !text-xs"
-        >
-          {saving ? "Saving…" : "Save"}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={saving}
-          className="btn-secondary !px-3 !py-1 !text-xs"
-        >
-          Cancel
-        </button>
-      </div>
     </div>
   );
 }
@@ -418,22 +392,22 @@ export function StayInline({
   stayExpense: TripExpense | null;
   handlers: DayBudgetHandlers;
 }) {
-  const [editing, setEditing] = useState<"name" | "cost" | null>(null);
+  const [editing, setEditing] = useState(false);
   const [name, setName] = useState(stayName);
   const [cost, setCost] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function start(field: "name" | "cost") {
+  function start() {
     setName(stayName);
     setCost(stayExpense ? String(stayExpense.amount) : "");
     setError(null);
-    setEditing(field);
+    setEditing(true);
   }
 
   function cancel() {
-    // Discard drafts; display values come from props, so the originals return.
-    setEditing(null);
+    // Drafts are discarded; display values come from props.
+    setEditing(false);
     setError(null);
   }
 
@@ -441,44 +415,42 @@ export function StayInline({
     if (saving || !editing) return;
     setError(null);
 
-    if (editing === "name") {
-      const trimmed = name.trim();
-      if (trimmed.length > 200) {
-        setError("Name is too long.");
-        return;
-      }
-      setSaving(true);
-      try {
-        await handlers.onSaveStayName(trimmed);
-        setEditing(null);
-      } catch {
-        setError("Unable to save. Please try again.");
-      } finally {
-        setSaving(false);
-      }
+    const trimmed = name.trim();
+    if (trimmed.length > 200) {
+      setError("Name is too long.");
       return;
     }
 
-    const parsed = parseAmount(cost);
-    if ("error" in parsed) {
-      setError(parsed.error);
-      return;
+    const costText = cost.trim();
+    const costChanged = stayExpense
+      ? costText !== String(stayExpense.amount)
+      : costText !== "";
+    let amount: number | null = null;
+    if (costChanged) {
+      const parsed = parseAmount(costText);
+      if ("error" in parsed) {
+        setError(parsed.error);
+        return;
+      }
+      amount = parsed.value;
     }
+
     setSaving(true);
     try {
-      if (stayExpense) {
-        await handlers.onUpdateExpense(stayExpense.id, {
-          amount: parsed.value,
-        });
-      } else {
-        await handlers.onCreateExpense({
-          category: "stay",
-          expense_type: STAY_DEFAULT_TYPE,
-          amount: parsed.value,
-          day_id: dayId,
-        });
+      if (trimmed !== stayName) await handlers.onSaveStayName(trimmed);
+      if (amount !== null) {
+        if (stayExpense) {
+          await handlers.onUpdateExpense(stayExpense.id, { amount });
+        } else {
+          await handlers.onCreateExpense({
+            category: "stay",
+            expense_type: STAY_DEFAULT_TYPE,
+            amount,
+            day_id: dayId,
+          });
+        }
       }
-      setEditing(null);
+      setEditing(false);
     } catch {
       setError("Unable to save. Please try again.");
     } finally {
@@ -496,96 +468,97 @@ export function StayInline({
     }
   }
 
-  const actions = (
-    <span className="flex gap-1.5">
-      <button
-        type="button"
-        onClick={() => void save()}
-        disabled={saving}
-        className="btn-primary !px-3 !py-1 !text-xs"
-      >
-        {saving ? "Saving…" : "Save"}
-      </button>
-      <button
-        type="button"
-        onClick={cancel}
-        disabled={saving}
-        className="btn-secondary !px-3 !py-1 !text-xs"
-      >
-        Cancel
-      </button>
-    </span>
-  );
-
   return (
-    <div className="mt-1 space-y-1 text-slate-700">
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        {editing === "name" ? (
-          <span className="flex flex-1 flex-wrap items-center gap-2">
+    <div className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200">
+      <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+        <span aria-hidden>🏨</span> Stay
+      </div>
+
+      {editing ? (
+        <div className="mt-2 space-y-2" onKeyDown={onKeyDown}>
+          <div className="flex flex-wrap gap-2">
             <input
               autoFocus
               aria-label="Property name"
+              placeholder="Property name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              onKeyDown={onKeyDown}
               disabled={saving}
               maxLength={200}
-              className="input min-w-[10rem] flex-1 !py-1 text-sm"
+              className="input min-w-[10rem] flex-1 !py-1.5 text-sm"
             />
-            {actions}
-          </span>
-        ) : (
-          <button
-            type="button"
-            onClick={() => start("name")}
-            title="Click to edit"
-            className="rounded px-1 py-0.5 text-left hover:bg-slate-50"
-          >
-            {stayName || (
-              <span className="text-slate-400">Add property name</span>
-            )}
-            {stayLocation && (
-              <span className="text-slate-500"> · {stayLocation}</span>
-            )}
-          </button>
-        )}
-
-        {editing === "cost" ? (
-          <span className="flex items-center gap-2">
             <input
-              autoFocus
               aria-label="Accommodation cost in INR"
               inputMode="numeric"
-              placeholder="₹ Cost"
+              placeholder="₹ Nightly cost"
               value={cost}
               onChange={(e) => setCost(e.target.value)}
-              onKeyDown={onKeyDown}
               disabled={saving}
-              className="input w-28 !py-1 text-sm tabular-nums"
+              className="input w-36 !py-1.5 text-sm tabular-nums"
             />
-            {actions}
-          </span>
-        ) : (
-          editing !== "name" && (
+          </div>
+          {stayLocation && (
+            <p className="text-xs text-slate-500">{stayLocation}</p>
+          )}
+          {error && (
+            <p role="alert" className="text-xs text-red-700">
+              {error}
+            </p>
+          )}
+          <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => start("cost")}
-              title="Click to edit"
-              className="rounded px-1 py-0.5 font-semibold tabular-nums text-slate-900 hover:bg-slate-50"
+              onClick={() => void save()}
+              disabled={saving}
+              className="btn-primary !px-4 !py-1.5 !text-xs"
             >
-              {stayExpense ? (
-                formatInr(stayExpense.amount)
-              ) : (
-                <span className="font-normal text-slate-400">+ Add cost</span>
-              )}
+              {saving ? "Saving…" : "Save"}
             </button>
-          )
-        )}
-      </div>
-      {error && (
-        <p role="alert" className="text-xs text-red-700">
-          {error}
-        </p>
+            <button
+              type="button"
+              onClick={cancel}
+              disabled={saving}
+              className="btn-secondary !px-4 !py-1.5 !text-xs"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-1.5 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-slate-900">
+              {stayName || (
+                <span className="font-normal text-slate-400">
+                  Add property name
+                </span>
+              )}
+            </p>
+            {stayLocation && (
+              <p className="truncate text-xs text-slate-500">{stayLocation}</p>
+            )}
+          </div>
+          <div className="flex shrink-0 items-start gap-1">
+            <div className="text-right">
+              <p className="font-semibold tabular-nums text-slate-900">
+                {stayExpense ? (
+                  formatInr(stayExpense.amount)
+                ) : (
+                  <span className="font-normal text-slate-400">No cost</span>
+                )}
+              </p>
+              <p className="text-xs text-slate-500">1 night</p>
+            </div>
+            <button
+              type="button"
+              aria-label="Edit accommodation"
+              onClick={start}
+              className={`${iconBtn} text-teal-700 hover:bg-teal-50`}
+            >
+              <Icon d={PENCIL} />
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,25 +1,48 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ItineraryDay } from "../../shared/types";
-import { formatShortDate } from "../lib/format";
+import { formatInr, formatShortDate } from "../lib/format";
+
+function shortWeekday(date: string): string {
+  return new Date(`${date}T12:00:00`).toLocaleDateString("en-US", {
+    weekday: "short",
+  });
+}
 
 type SummaryCardProps = {
   day: ItineraryDay;
+  dayCost: number | null;
+  active: boolean;
+  onSelect: () => void;
 };
 
-export function ItineraryDaySummary({ day }: SummaryCardProps) {
-  const stayName = day.stay_name?.trim() ?? "";
-  const stayLine = stayName
-    ? `Stay at ${stayName}`
-    : "Stay not set";
+export function ItineraryDaySummary({
+  day,
+  dayCost,
+  active,
+  onSelect,
+}: SummaryCardProps) {
+  const destination =
+    day.to_location?.trim() || day.stay_location?.trim() || "—";
 
   return (
-    <article className="card flex w-[7.25rem] shrink-0 flex-col px-3 py-2.5 sm:w-[8.5rem]">
-      <p className="text-sm font-bold text-slate-900">Day {day.day_number}</p>
-      <p className="mt-0.5 text-xs text-slate-600">{formatShortDate(day.date)}</p>
-      <p className="mt-1 line-clamp-2 text-xs leading-snug text-slate-700">
-        {stayLine}
-      </p>
-    </article>
+    <button
+      type="button"
+      data-day-id={day.id}
+      onClick={onSelect}
+      aria-current={active ? "true" : undefined}
+      className={`card flex w-[8rem] shrink-0 flex-col px-3 py-2.5 text-left transition hover:bg-slate-50 sm:w-[9.5rem] ${
+        active ? "!border-teal-500 !bg-teal-50 ring-1 ring-teal-500" : ""
+      }`}
+    >
+      <span className="text-sm font-bold text-slate-900">Day {day.day_number}</span>
+      <span className="mt-0.5 text-xs text-slate-600">
+        {formatShortDate(day.date)}, {shortWeekday(day.date)}
+      </span>
+      <span className="mt-1 truncate text-xs text-slate-700">{destination}</span>
+      <span className="mt-1 text-sm font-bold tabular-nums text-slate-900">
+        {dayCost != null ? formatInr(dayCost) : "—"}
+      </span>
+    </button>
   );
 }
 
@@ -56,9 +79,17 @@ function ChevronRightIcon() {
 
 type RowProps = {
   days: ItineraryDay[];
+  activeDayId: string | null;
+  costByDayId: Record<string, number | null>;
+  onSelectDay: (dayId: string) => void;
 };
 
-export function ItineraryDaySummaryRow({ days }: RowProps) {
+export function ItineraryDaySummaryRow({
+  days,
+  activeDayId,
+  costByDayId,
+  onSelectDay,
+}: RowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -111,6 +142,19 @@ export function ItineraryDaySummaryRow({ days }: RowProps) {
     };
   }, [days, updateScrollState]);
 
+  // Keep the active day visible within the horizontal selector.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !activeDayId) return;
+    const target = el.querySelector<HTMLElement>(
+      `[data-day-id="${CSS.escape(activeDayId)}"]`,
+    );
+    if (!target) return;
+    const left =
+      target.offsetLeft - el.offsetLeft - (el.clientWidth - target.offsetWidth) / 2;
+    el.scrollTo({ left, behavior: "smooth" });
+  }, [activeDayId]);
+
   if (days.length === 0) return null;
 
   return (
@@ -131,7 +175,13 @@ export function ItineraryDaySummaryRow({ days }: RowProps) {
         aria-label="Itinerary day overview"
       >
         {days.map((day) => (
-          <ItineraryDaySummary key={day.id} day={day} />
+          <ItineraryDaySummary
+            key={day.id}
+            day={day}
+            dayCost={costByDayId[day.id] ?? null}
+            active={day.id === activeDayId}
+            onSelect={() => onSelectDay(day.id)}
+          />
         ))}
       </div>
 
