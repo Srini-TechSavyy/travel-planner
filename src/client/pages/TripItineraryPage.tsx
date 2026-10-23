@@ -12,7 +12,7 @@ import { TripCoverImage } from "../components/TripCoverImage";
 import { TripMapView } from "../components/TripMapView";
 import { useAuth } from "../hooks/useAuth";
 import { useTripBundle } from "../hooks/useTripBundle";
-import { displayDayExpenseAmount, displayTripBudgetTotal, hasTripExpenses } from "../lib/budget";
+import { displayDayExpenseAmount, displayTripBudgetTotal } from "../lib/budget";
 import {
   deleteDraftTrip,
   draftToImportPayload,
@@ -303,14 +303,30 @@ export function TripItineraryPage() {
                 bundle.expenses,
                 bundle.expenseSummary,
               );
+              const dayId = day.id;
               return (
                 <ItineraryDayCard
                   key={day.id}
                   day={day}
+                  dayExpenses={bundle.expenses.filter((e) => e.day_id === dayId)}
                   expenseAmount={expenseAmount}
-                  legacyExpenseDisplay={
-                    expenseAmount != null && !hasTripExpenses(bundle.expenses)
-                  }
+                  budgetHandlers={{
+                    onCreateExpense: async (input) => {
+                      await bundle.createExpense(input);
+                    },
+                    onUpdateExpense: async (id, input) => {
+                      await bundle.updateExpense(id, input);
+                    },
+                    onDeleteExpense: async (id) => {
+                      await bundle.deleteExpense(id);
+                    },
+                    onSaveStayName: async (name) => {
+                      await bundle.saveDay(dayId, {
+                        ...toDayFormValues(day),
+                        stay_name: name,
+                      });
+                    },
+                  }}
                   onEditDay={() => setEditingDay(day)}
                 />
               );

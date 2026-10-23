@@ -1,21 +1,31 @@
 import type { ReactNode } from "react";
 import type { DayListItem, ItineraryDay } from "../../shared/types";
-import { formatDayOfWeek, formatInr, formatShortDate } from "../lib/format";
+import { formatDayOfWeek, formatShortDate } from "../lib/format";
+import type { TripExpense } from "../../shared/types";
+import {
+  DayExpenseSection,
+  StayInline,
+  type DayBudgetHandlers,
+} from "./DayBudgetSection";
 import { PlaceLocationImage } from "./PlaceLocationImage";
 
 const LIST_PREVIEW = 2;
 
 type Props = {
   day: ItineraryDay;
+  /** All expenses assigned to this day. */
+  dayExpenses: TripExpense[];
+  /** Daily estimated total (expenses, or legacy day budget fallback). */
   expenseAmount: number | null;
-  legacyExpenseDisplay?: boolean;
+  budgetHandlers: DayBudgetHandlers;
   onEditDay: () => void;
 };
 
 export function ItineraryDayCard({
   day,
+  dayExpenses,
   expenseAmount,
-  legacyExpenseDisplay = false,
+  budgetHandlers,
   onEditDay,
 }: Props) {
   const from = day.from_location?.trim() ?? "";
@@ -26,7 +36,10 @@ export function ItineraryDayCard({
 
   const stayName = day.stay_name?.trim() ?? "";
   const stayLocation = day.stay_location?.trim() ?? "";
-  const stayDisplay = [stayName, stayLocation].filter(Boolean).join(" · ");
+  // The first stay-category expense is the day's accommodation cost.
+  const stayExpense =
+    dayExpenses.find((e) => e.category === "stay") ?? null;
+  const listedExpenses = dayExpenses.filter((e) => e.id !== stayExpense?.id);
 
   const travelMeta = [
     day.distance_km != null ? formatKm(day.distance_km) : null,
@@ -37,13 +50,10 @@ export function ItineraryDayCard({
 
   const hasItinerary =
     hasTravel ||
-    stayDisplay.length > 0 ||
     day.sightseeing.length > 0 ||
     day.restaurants.length > 0 ||
     day.foods.length > 0 ||
     (day.notes && !hasTravel);
-
-  const showLegacyCompact = legacyExpenseDisplay;
 
   return (
     <article className="card flex overflow-hidden">
@@ -110,12 +120,6 @@ export function ItineraryDayCard({
             </div>
           )}
 
-          {stayDisplay.length > 0 && (
-            <Section title="Stay" icon="🏨">
-              <p className="text-slate-700">{stayDisplay}</p>
-            </Section>
-          )}
-
           {day.sightseeing.length > 0 && (
             <Section title="Sightseeing" icon="📍">
               <NameList items={day.sightseeing} />
@@ -140,28 +144,24 @@ export function ItineraryDayCard({
         </div>
       )}
 
-      {expenseAmount != null && (
-        <div
-          className={
-            hasItinerary
-              ? "mt-4 border-t border-slate-100 pt-3"
-              : "mt-3"
-          }
-        >
-          {showLegacyCompact ? (
-            <p className="text-sm font-semibold tabular-nums text-slate-900">
-              💰 {formatInr(expenseAmount)}
-            </p>
-          ) : (
-            <>
-              <p className="text-sm font-medium text-slate-600">💰 Expenses</p>
-              <p className="mt-0.5 text-sm font-semibold tabular-nums text-slate-900">
-                {formatInr(expenseAmount)}
-              </p>
-            </>
-          )}
-        </div>
-      )}
+      <div className="mt-3 text-sm">
+        <Section title="Stay" icon="🏨">
+          <StayInline
+            dayId={day.id}
+            stayName={stayName}
+            stayLocation={stayLocation}
+            stayExpense={stayExpense}
+            handlers={budgetHandlers}
+          />
+        </Section>
+      </div>
+
+      <DayExpenseSection
+        dayId={day.id}
+        expenses={listedExpenses}
+        handlers={budgetHandlers}
+        dayTotal={expenseAmount}
+      />
       </div>
     </article>
   );
